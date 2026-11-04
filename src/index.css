@@ -1,0 +1,250 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Default: Serika Dark (Clean, saturated, zero false-alarm reds) */
+  --color-bg: #212328;
+  --color-surface: #2b2e34;
+  --color-card: #1d1e22;
+  --color-border: #3e4249;
+  --color-text-main: #f1f2f6;
+  --color-text-sub: #7d828c;
+  --color-text-dim: #4e535e;
+  --color-accent: #facc15;
+  --color-accent-hover: #fde047;
+  --color-error: #f43f5e;
+  --color-error-bg: rgba(244, 63, 94, 0.25);
+  --color-correct: #ffffff;
+
+  /* Zero-Red Syntax Highlighting: Red is strictly reserved for real typing mistakes! */
+  --syntax-keyword: #fbbf24;       /* Warm amber gold */
+  --syntax-string: #4ade80;        /* Vivid emerald lime green */
+  --syntax-function: #38bdf8;      /* Radiant electric sky cyan */
+  --syntax-comment: #94a3b8;       /* Clean readable slate */
+  --syntax-number: #facc15;        /* Bright golden yellow */
+  --syntax-operator: #e2e8f0;      /* Crisp clean silver white (never red) */
+  --syntax-punctuation: #cbd5e1;   /* Crisp slate white */
+  --syntax-class: #c084fc;         /* Radiant orchid violet */
+  --syntax-builtin: #a855f7;       /* Electric purple */
+}
+
+/* Theme: Dracula - High Contrast Vampire (No red in syntax tokens) */
+[data-theme="dracula"] {
+  --color-bg: #1e1f29;
+  --color-surface: #282a36;
+  --color-card: #181922;
+  --color-border: #4a4e69;
+  --color-text-main: #f8f8f2;
+  --color-text-sub: #8592bb;
+  --color-text-dim: #545b78;
+  --color-accent: #bd93f9;
+  --color-accent-hover: #d1b4ff;
+  --color-error: #ff5555;
+  --color-error-bg: rgba(255, 85, 85, 0.3);
+  --color-correct: #ffffff;
+
+  --syntax-keyword: #bd93f9;       /* Vivid violet */
+  --syntax-string: #f1fa8c;        /* Bright canary yellow */
+  --syntax-function: #50fa7b;      /* Neon spring green */
+  --syntax-comment: #7d8bb3;
+  --syntax-number: #8be9fd;        /* Neon electric cyan */
+  --syntax-operator: #f8f8f2;      /* Crisp white */
+  --syntax-punctuation: #f8f8f2;
+  --syntax-class: #8be9fd;         /* Neon cyan */
+  --syntax-builtin: #bd93f9;
+}
+
+/* Theme: Cyberpunk Neon - Maximum Electric Glow (No red in syntax tokens) */
+[data-theme="cyberpunk"] {
+  --color-bg: #080811;
+  --color-surface: #101026;
+  --color-card: #0a0a1a;
+  --color-border: #3b3b75;
+  --color-text-main: #f0fdf4;
+  --color-text-sub: #6366f1;
+  --color-text-dim: #312e81;
+  --color-accent: #00f0ff;
+  --color-accent-hover: #38f4ff;
+  --color-error: #ff0055;
+  --color-error-bg: rgba(255, 0, 85, 0.35);
+  --color-correct: #ffffff;
+
+  --syntax-keyword: #00f0ff;       /* Electric cyan */
+  --syntax-string: #00ff9f;        /* Pure radioactive mint green */
+  --syntax-function: #ffe600;      /* Laser yellow */
+  --syntax-comment: #818cf8;
+  --syntax-number: #c084fc;        /* Violet */
+  --syntax-operator: #38bdf8;      /* Sky cyan */
+  --syntax-punctuation: #e0f2fe;   /* Crisp icy white */
+  --syntax-class: #c084fc;
+  --syntax-builtin: #00f0ff;
+}
+
+/* Theme: Monokai Pro - Intense Vibrant Contrast (No red in syntax tokens) */
+[data-theme="monokai"] {
+  --color-bg: #1c1d1a;
+  --color-surface: #272822;
+  --color-card: #171814;
+  --color-border: #4d4c3f;
+  --color-text-main: #fcfcfa;
+  --color-text-sub: #939286;
+  --color-text-dim: #5c5b52;
+  --color-accent: #a6e22e;
+  --color-accent-hover: #bcf246;
+  --color-error: #ff4071;
+  --color-error-bg: rgba(255, 64, 113, 0.3);
+  --color-correct: #ffffff;
+
+  --syntax-keyword: #ffd866;       /* Bright canary gold */
+  --syntax-string: #a9dc76;        /* Vivid punchy lime green */
+  --syntax-function: #78dce8;      /* Bright sky cyan */
+  --syntax-comment: #8f8e83;
+  --syntax-number: #ab9df2;        /* Lavender purple */
+  --syntax-operator: #fcfcfa;      /* Crisp white */
+  --syntax-punctuation: #fcfcfa;
+  --syntax-class: #78dce8;         /* Bright sky cyan */
+  --syntax-builtin: #ab9df2;
+}
+
+/* Theme: Catppuccin Mocha - Rich Vibrant Pastels (No red in syntax tokens) */
+[data-theme="catppuccin"] {
+  --color-bg: #181825;
+  --color-surface: #1e1e2e;
+  --color-card: #11111b;
+  --color-border: #3b3f5c;
+  --color-text-main: #f5f7ff;
+  --color-text-sub: #898fa8;
+  --color-text-dim: #545873;
+  --color-accent: #cba6f7;
+  --color-accent-hover: #ddb6f2;
+  --color-error: #f38ba8;
+  --color-error-bg: rgba(243, 139, 168, 0.25);
+  --color-correct: #ffffff;
+
+  --syntax-keyword: #cba6f7;       /* Mauve violet */
+  --syntax-string: #a6e3a1;        /* Vivid emerald green */
+  --syntax-function: #89b4fa;      /* Vibrant blue */
+  --syntax-comment: #7d84a0;
+  --syntax-number: #fab387;        /* Soft peach */
+  --syntax-operator: #89dceb;      /* Sky cyan */
+  --syntax-punctuation: #cdd6f4;
+  --syntax-class: #f9e2af;         /* Yellow */
+  --syntax-builtin: #cba6f7;
+}
+
+/* Theme: Matrix - Pure Terminal Green phosphor */
+[data-theme="matrix"] {
+  --color-bg: #070b09;
+  --color-surface: #0e1712;
+  --color-card: #050806;
+  --color-border: #163824;
+  --color-text-main: #22ff77;
+  --color-text-sub: #228b4d;
+  --color-text-dim: #114e2a;
+  --color-accent: #00ff66;
+  --color-accent-hover: #33ff85;
+  --color-error: #ff3344;
+  --color-error-bg: rgba(255, 51, 68, 0.3);
+  --color-correct: #ffffff;
+
+  --syntax-keyword: #00ff88;
+  --syntax-string: #a3ff66;
+  --syntax-function: #38ef7d;
+  --syntax-comment: #19874b;
+  --syntax-number: #bbf740;
+  --syntax-operator: #00ff66;
+  --syntax-punctuation: #4ade80;
+  --syntax-class: #5eead4;
+  --syntax-builtin: #10b981;
+}
+
+/* Theme: Nord - Saturated Frost & Aurora (No red in syntax tokens) */
+[data-theme="nord"] {
+  --color-bg: #242933;
+  --color-surface: #2e3440;
+  --color-card: #1c2027;
+  --color-border: #4c566a;
+  --color-text-main: #f8fafc;
+  --color-text-sub: #94a3b8;
+  --color-text-dim: #64748b;
+  --color-accent: #38bdf8;
+  --color-accent-hover: #7dd3fc;
+  --color-error: #f43f5e;
+  --color-error-bg: rgba(244, 63, 94, 0.3);
+  --color-correct: #ffffff;
+
+  --syntax-keyword: #81a1c1;       /* Nord blue */
+  --syntax-string: #4ade80;        /* Vivid green */
+  --syntax-function: #38bdf8;      /* Frost cyan */
+  --syntax-comment: #7b88a1;
+  --syntax-number: #c084fc;        /* Violet */
+  --syntax-operator: #88c0d0;      /* Frost teal */
+  --syntax-punctuation: #e2e8f0;   /* Slate white */
+  --syntax-class: #2dd4bf;
+  --syntax-builtin: #38bdf8;
+}
+
+/* Theme: Carbon - High Contrast Warm Amber (No red in syntax tokens) */
+[data-theme="carbon"] {
+  --color-bg: #141414;
+  --color-surface: #202020;
+  --color-card: #0f0f0f;
+  --color-border: #3d3d3d;
+  --color-text-main: #f5f5f5;
+  --color-text-sub: #8a8a8a;
+  --color-text-dim: #4f4f4f;
+  --color-accent: #f59e0b;
+  --color-accent-hover: #fbbf24;
+  --color-error: #f43f5e;
+  --color-error-bg: rgba(244, 63, 94, 0.25);
+  --color-correct: #ffffff;
+
+  --syntax-keyword: #f59e0b;       /* Golden amber */
+  --syntax-string: #34d399;        /* Emerald */
+  --syntax-function: #38bdf8;      /* Cyan */
+  --syntax-comment: #737373;
+  --syntax-number: #fbbf24;        /* Gold */
+  --syntax-operator: #e5e5e5;      /* Crisp white (never red) */
+  --syntax-punctuation: #e5e5e5;
+  --syntax-class: #c084fc;
+  --syntax-builtin: #38bdf8;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-sub);
+}
+
+/* Base styles */
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text-main);
+  transition: background-color 0.2s ease, color 0.2s ease;
+  user-select: none;
+}
+
+/* Caret animations */
+.caret-smooth {
+  transition: transform 0.08s cubic-bezier(0.1, 0.9, 0.2, 1);
+}
+
+/* Hide native outline on focus */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
