@@ -55,7 +55,7 @@ export function App() {
   const [mode, setMode] = useState<TestMode>('snippet');
   const [timeDuration, setTimeDuration] = useState<TimeDuration>(30);
   const [selectedLanguage, setSelectedLanguage] = useState<Language | 'all'>('all');
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'backend' | 'frontend'>('backend');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'backend' | 'frontend' | 'server'>('backend');
   const [practiceType, setPracticeType] = useState<'all' | 'commands' | 'code' | 'git'>('all');
 
   const [allSnippetsList, setAllSnippetsList] = useState<Snippet[]>(() => getAllSnippets());

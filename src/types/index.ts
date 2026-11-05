@@ -50,7 +50,7 @@ export interface Snippet {
   description?: string;
   language: Language;
   code: string;
-  category?: 'algorithm' | 'real-world' | 'short' | 'custom' | 'general' | 'frontend' | 'backend';
+  category?: 'algorithm' | 'real-world' | 'short' | 'custom' | 'general' | 'frontend' | 'backend' | 'server';
   practiceType?: 'commands' | 'code' | 'git';
   isCustom?: boolean;
   createdAt?: number;

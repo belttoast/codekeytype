@@ -52,9 +52,9 @@ INSERT INTO users (username, password, name, role) VALUES
 ('dir', '1234', 'ผอ.เกรียงไกร', 'director');`
   },
   {
-    id: 'backend-code-server-setup',
-    title: 'Backend: 3. server.js Setup & Auth',
-    description: 'Express app, Multer uploads, MySQL pool, and JWT middleware',
+    id: 'backend-code-server-js',
+    title: 'Backend: 3. Write server.js',
+    description: 'Complete backend server: Express, JWT auth, Multer upload, CRUD & Excel import/export',
     language: 'javascript',
     category: 'backend',
     practiceType: 'code',
@@ -74,6 +74,7 @@ app.use('/uploads', express.static(uploadDir));
 const SECRET = 'jwt_secret';
 const upload = multer({ dest: uploadDir });
 const db = mysql.createPool({ host: 'localhost', user: 'root', password: '', database: 'eval_db' });
+
 const send = (res, status, message, data = null) => res.status(status).json({ status, message, data });
 
 const auth = (req, res, next) => {
@@ -83,16 +84,9 @@ const auth = (req, res, next) => {
   } catch {
     send(res, 401, 'กรุณาเข้าสู่ระบบก่อนดำเนินการ');
   }
-};`
-  },
-  {
-    id: 'backend-code-server-routes',
-    title: 'Backend: 4. server.js Core API Routes',
-    description: 'Login with JWT, Multer upload, and Dashboard with search & pagination',
-    language: 'javascript',
-    category: 'backend',
-    practiceType: 'code',
-    code: `app.post('/api/login', async (req, res) => {
+};
+
+app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body || {};
     const [rows] = await db.query('SELECT * FROM users WHERE username = ? AND password = ?', [username, password]);
@@ -122,46 +116,79 @@ app.get('/api/dashboard', auth, async (req, res) => {
   } catch {
     send(res, 500, 'ดึงข้อมูลไม่สำเร็จ');
   }
-});`
-  },
-  {
-    id: 'backend-code-server-evaluate',
-    title: 'Backend: 5. server.js Evaluate CRUD & Port',
-    description: 'Pending list, Evaluate POST, PUT edit, and DELETE reset',
-    language: 'javascript',
-    category: 'backend',
-    practiceType: 'code',
-    code: `app.get('/api/pending/:role', auth, async (req, res) => {
-  const sql = req.params.role === 'boss'
-    ? 'SELECT id, name, emp_score, file_url FROM users WHERE role="employee" AND emp_score IS NOT NULL AND boss_score IS NULL'
-    : 'SELECT id, name, emp_score, boss_score, file_url FROM users WHERE role="employee" AND boss_score IS NOT NULL AND dir_score IS NULL';
-  const [rows] = await db.query(sql);
-  send(res, 200, 'สำเร็จ', rows);
+});
+
+app.get('/api/pending/:role', auth, async (req, res) => {
+  try {
+    const sql = req.params.role === 'boss'
+      ? 'SELECT id, name, emp_score, file_url FROM users WHERE role="employee" AND emp_score IS NOT NULL AND boss_score IS NULL'
+      : 'SELECT id, name, emp_score, boss_score, file_url FROM users WHERE role="employee" AND boss_score IS NOT NULL AND dir_score IS NULL';
+    const [rows] = await db.query(sql);
+    send(res, 200, 'สำเร็จ', rows);
+  } catch {
+    send(res, 500, 'เกิดข้อผิดพลาด');
+  }
 });
 
 app.post('/api/evaluate', auth, async (req, res) => {
-  const { id, role, score, file_url } = req.body || {};
-  const col = role === 'employee' ? 'emp_score' : role === 'boss' ? 'boss_score' : 'dir_score';
-  await db.query(\`UPDATE users SET \${col} = ?, file_url = COALESCE(?, file_url) WHERE id = ?\`, [score, file_url || null, id]);
-  send(res, 200, 'บันทึกคะแนนเรียบร้อย');
+  try {
+    const { id, role, score, file_url } = req.body || {};
+    const col = role === 'employee' ? 'emp_score' : role === 'boss' ? 'boss_score' : 'dir_score';
+    await db.query(\`UPDATE users SET \${col} = ?, file_url = COALESCE(?, file_url) WHERE id = ?\`, [score, file_url || null, id]);
+    send(res, 200, 'บันทึกคะแนนเรียบร้อย');
+  } catch {
+    send(res, 500, 'บันทึกไม่สำเร็จ');
+  }
 });
 
 app.put('/api/evaluate/:id', auth, async (req, res) => {
-  const { score, file_url } = req.body || {};
-  await db.query('UPDATE users SET emp_score = ?, file_url = COALESCE(?, file_url) WHERE id = ?', [score, file_url || null, req.params.id]);
-  send(res, 200, 'แก้ไขข้อมูลเรียบร้อย');
+  try {
+    const { score, file_url } = req.body || {};
+    await db.query('UPDATE users SET emp_score = ?, file_url = COALESCE(?, file_url) WHERE id = ?', [score, file_url || null, req.params.id]);
+    send(res, 200, 'แก้ไขข้อมูลเรียบร้อย');
+  } catch {
+    send(res, 500, 'แก้ไขไม่สำเร็จ');
+  }
 });
 
 app.delete('/api/evaluate/:id', auth, async (req, res) => {
-  await db.query('UPDATE users SET emp_score = NULL, boss_score = NULL, dir_score = NULL, file_url = NULL WHERE id = ?', [req.params.id]);
-  send(res, 200, 'ลบข้อมูลเรียบร้อย');
+  try {
+    await db.query('UPDATE users SET emp_score = NULL, boss_score = NULL, dir_score = NULL, file_url = NULL WHERE id = ?', [req.params.id]);
+    send(res, 200, 'ลบข้อมูลเรียบร้อย');
+  } catch {
+    send(res, 500, 'ลบไม่สำเร็จ');
+  }
+});
+
+app.get('/api/export', auth, async (req, res) => {
+  const [rows] = await db.query(\`
+    SELECT id, name, emp_score, boss_score, dir_score,
+      ROUND((COALESCE(emp_score,0)+COALESCE(boss_score,0)+COALESCE(dir_score,0))/3, 2) AS avg_score
+    FROM users WHERE role = 'employee' ORDER BY id ASC
+  \`);
+  send(res, 200, 'สำเร็จ', rows);
+});
+
+app.post('/api/import', auth, async (req, res) => {
+  try {
+    const lines = (req.body.csv || '').trim().split('\\n').slice(1);
+    for (const line of lines) {
+      const [id, name, emp, boss, dir] = line.split(',').map((s: string) => s?.trim());
+      if (id && !isNaN(Number(id))) {
+        await db.query('UPDATE users SET name=COALESCE(NULLIF(?,""), name), emp_score=NULLIF(?,""), boss_score=NULLIF(?,""), dir_score=NULLIF(?,"") WHERE id = ?', [name, emp, boss, dir, id]);
+      }
+    }
+    send(res, 200, 'นำเข้าสำเร็จ');
+  } catch {
+    send(res, 500, 'นำเข้าไม่สำเร็จ');
+  }
 });
 
 app.listen(5000, () => console.log('Server running on port 5000'));`
   },
   {
     id: 'backend-git-push',
-    title: 'Backend: 6. Push to Git',
+    title: 'Backend: 4. Push to Git',
     description: 'Git workflow: create .gitignore, stage, commit, and push backend',
     language: 'bash',
     category: 'backend',
@@ -199,14 +226,13 @@ cd frontend
 npm run dev`
   },
   {
-    id: 'frontend-code-config-and-css',
-    title: 'Frontend: 2. next.config.ts & globals.css',
-    description: 'Disable dev indicators and setup background stylesheet',
+    id: 'frontend-code-next-config',
+    title: 'Frontend: 2. Write next.config.ts',
+    description: 'Disable dev indicators to hide dev badges',
     language: 'typescript',
     category: 'frontend',
     practiceType: 'code',
-    code: `// frontend/next.config.ts
-import type { NextConfig } from "next";
+    code: `import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
@@ -215,17 +241,20 @@ const nextConfig: NextConfig = {
 export default nextConfig;`
   },
   {
-    id: 'frontend-code-req-helper',
-    title: 'Frontend: 3. API Request Helper with JWT',
-    description: 'Standard fetch wrapper with auto Authorization Bearer token',
+    id: 'frontend-code-page-tsx',
+    title: 'Frontend: 3. Write app/page.tsx',
+    description: 'Complete frontend: login, employee form, grading, dashboard, & Excel CSV',
     language: 'typescript',
     category: 'frontend',
     practiceType: 'code',
-    code: `const API = 'http://localhost:5000/api';
+    code: `'use client';
+
+import { useState, useEffect } from 'react';
+
+const API = 'http://localhost:5000/api';
 const UPLOAD_URL = 'http://localhost:5000/uploads';
 const roleNames: Record<string, string> = { employee: 'พนักงาน', boss: 'หัวหน้างาน', director: 'ผู้อำนวยการ' };
 
-// API request helper with auto JWT header injection
 const req = async (url: string, method = 'GET', body?: any) => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const res = await fetch(\`\${API}\${url}\`, {
@@ -239,83 +268,301 @@ const req = async (url: string, method = 'GET', body?: any) => {
   const json = await res.json();
   if (!res.ok) throw new Error(json.message || 'เกิดข้อผิดพลาด');
   return json.data;
-};`
-  },
-  {
-    id: 'frontend-code-actions',
-    title: 'Frontend: 4. Login, Save, & Delete Actions',
-    description: 'Client-side handlers for JWT login, evaluate POST/PUT, and DELETE',
-    language: 'typescript',
-    category: 'frontend',
-    practiceType: 'code',
-    code: `const login = async (e: any) => {
-  e.preventDefault();
-  try {
-    const data = await req('/login', 'POST', { username: e.target.u.value, password: e.target.p.value });
-    localStorage.setItem('token', data.token);
-    setUser(data.user);
-    load(data.user, 1, '');
-  } catch (err: any) { alert(err.message); }
 };
 
-const save = async (e: any) => {
-  e.preventDefault();
-  try {
-    const file_url = await upload(e.target.file?.files?.[0]);
-    const score = e.target.score.value;
-    if (isEditing) {
-      await req(\`/evaluate/\${user.id}\`, 'PUT', { score, file_url });
-      setIsEditing(false);
-    } else {
-      await req('/evaluate', 'POST', { id: user.id, role: 'employee', score, file_url });
-    }
-    alert('บันทึกเรียบร้อย');
-    load();
-  } catch (err: any) { alert(err.message); }
-};
+export default function Home() {
+  const [user, setUser] = useState<any>(null);
+  const [list, setList] = useState<any[]>([]);
+  const [pending, setPending] = useState<any[]>([]);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isEditing, setIsEditing] = useState(false);
 
-const del = async () => {
-  if (!confirm('ยืนยันที่จะลบข้อมูลการประเมินนี้หรือไม่?')) return;
-  try {
-    await req(\`/evaluate/\${user.id}\`, 'DELETE');
-    alert('ลบข้อมูลเรียบร้อย');
-    load();
-  } catch (err: any) { alert(err.message); }
-};`
-  },
-  {
-    id: 'frontend-code-export-import',
-    title: 'Frontend: 5. Excel CSV Export & Import',
-    description: 'Browser CSV generator and file parser for Excel round-trip',
-    language: 'typescript',
-    category: 'frontend',
-    practiceType: 'code',
-    code: `const exportCSV = async () => {
-  try {
-    const data = await req('/export');
-    const header = 'id,name,self_score,boss_score,dir_score,avg_score\\n';
-    const rows = data.map((e: any) => \`\${e.id},\${e.name},\${e.emp_score ?? ''},\${e.boss_score ?? ''},\${e.dir_score ?? ''},\${e.avg_score}\`).join('\\n');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob(['\\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' }));
-    a.download = 'evaluations.csv';
-    a.click();
-  } catch (err: any) { alert(err.message); }
-};
+  const load = async (u = user, p = page, s = search) => {
+    if (!u) return;
+    try {
+      const [d, pend] = await Promise.all([
+        req(\`/dashboard?search=\${s}&page=\${p}\`),
+        u.role !== 'employee' ? req(\`/pending/\${u.role}\`) : [],
+      ]);
+      setList(d.items);
+      setTotalPages(d.totalPages);
+      setPending(pend);
+      if (u.role === 'employee') {
+        const me = d.items.find((x: any) => x.id === u.id);
+        if (me) setUser((prev: any) => ({ ...prev, emp_score: me.emp_score, file_url: me.file_url }));
+      }
+    } catch (err: any) { alert(err.message); }
+  };
 
-const importCSV = async (e: any) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  try {
-    await req('/import', 'POST', { csv: await file.text() });
-    alert('นำเข้าสำเร็จ');
-    e.target.value = '';
-    load();
-  } catch (err: any) { alert(err.message); }
-};`
+  useEffect(() => { if (user) load(user, page, search); }, [user?.id, page, search]);
+
+  const upload = async (file?: File) => {
+    if (!file) return null;
+    const fd = new FormData();
+    fd.append('file', file);
+    return (await req('/upload', 'POST', fd)).url;
+  };
+
+  const login = async (e: any) => {
+    e.preventDefault();
+    try {
+      const data = await req('/login', 'POST', { username: e.target.u.value, password: e.target.p.value });
+      localStorage.setItem('token', data.token);
+      setUser(data.user);
+      load(data.user, 1, '');
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const save = async (e: any) => {
+    e.preventDefault();
+    try {
+      const file_url = await upload(e.target.file?.files?.[0]);
+      const score = e.target.score.value;
+      if (isEditing) {
+        await req(\`/evaluate/\${user.id}\`, 'PUT', { score, file_url });
+        setIsEditing(false);
+      } else {
+        await req('/evaluate', 'POST', { id: user.id, role: 'employee', score, file_url });
+      }
+      alert('บันทึกเรียบร้อย');
+      load();
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const evaluateOther = async (id: number, score: string) => {
+    try {
+      await req('/evaluate', 'POST', { id, role: user.role, score });
+      alert('บันทึกคะแนนเรียบร้อย');
+      load();
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const del = async () => {
+    if (!confirm('ยืนยันที่จะลบข้อมูลการประเมินนี้หรือไม่?')) return;
+    try {
+      await req(\`/evaluate/\${user.id}\`, 'DELETE');
+      alert('ลบข้อมูลเรียบร้อย');
+      load();
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const exportCSV = async () => {
+    try {
+      const data = await req('/export');
+      const header = 'id,name,self_score,boss_score,dir_score,avg_score\\n';
+      const rows = data.map((e: any) => \`\${e.id},\${e.name},\${e.emp_score ?? ''},\${e.boss_score ?? ''},\${e.dir_score ?? ''},\${e.avg_score}\`).join('\\n');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob(['\\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' }));
+      a.download = 'evaluations.csv';
+      a.click();
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const importCSV = async (e: any) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      await req('/import', 'POST', { csv: await file.text() });
+      alert('นำเข้าสำเร็จ');
+      e.target.value = '';
+      load();
+    } catch (err: any) { alert(err.message); }
+  };
+
+  if (!user) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
+        <form onSubmit={login} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-sm space-y-4">
+          <div className="text-center mb-2">
+            <h1 className="text-xl font-bold text-slate-800">ระบบประเมินผลการปฏิบัติงาน</h1>
+          </div>
+          <input name="u" placeholder="ชื่อผู้ใช้งาน (emp1-4, boss, dir)" className="border border-slate-300 w-full p-2.5 rounded-lg text-sm" required />
+          <input name="p" type="password" placeholder="รหัสผ่าน (1234)" className="border border-slate-300 w-full p-2.5 rounded-lg text-sm" required />
+          <button className="bg-blue-600 hover:bg-blue-700 text-white w-full py-2.5 rounded-lg text-sm font-medium transition shadow-sm">
+            เข้าสู่ระบบ
+          </button>
+        </form>
+      </main>
+    );
+  }
+
+  const getBadge = (e: any) => {
+    if (e.dir_score !== null) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">เสร็จสมบูรณ์</span>;
+    if (e.boss_score !== null) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">รอ ผอ.</span>;
+    if (e.emp_score !== null) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">รอหัวหน้า</span>;
+    return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">รอพนักงาน</span>;
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50/60 p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
+      <header className="flex justify-between items-center bg-white px-5 py-3.5 rounded-xl shadow-sm border border-slate-200">
+        <div className="flex items-center gap-2">
+          <span className="text-slate-500 text-sm">ผู้ใช้งาน:</span>
+          <strong className="text-slate-800 text-sm">{user.name}</strong>
+          <span className="px-2.5 py-0.5 bg-blue-50 border border-blue-200 text-blue-700 rounded-full text-xs font-semibold">
+            {roleNames[user.role]}
+          </span>
+        </div>
+        <button onClick={() => { localStorage.removeItem('token'); setUser(null); }} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition">
+          ออกจากระบบ
+        </button>
+      </header>
+
+      {user.role === 'employee' && (
+        <section className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+          <h2 className="text-base font-bold text-slate-800 mb-3 pb-2 border-b">แบบประเมินตนเอง (คะแนนเต็ม 100)</h2>
+          {user.emp_score !== null && !isEditing ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-emerald-50/60 border border-emerald-200 rounded-lg">
+              <div>
+                <span className="text-emerald-800 font-semibold text-sm">คะแนนประเมินตนเอง: {user.emp_score} / 100</span>
+                {user.file_url && (
+                  <a href={\`\${UPLOAD_URL}/\${user.file_url}\`} target="_blank" className="ml-3 text-blue-600 underline text-xs">
+                    ดูไฟล์หลักฐาน
+                  </a>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setIsEditing(true)} className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-medium transition">
+                  แก้ไขคะแนน/ไฟล์
+                </button>
+                <button onClick={del} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition">
+                  ลบข้อมูล
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={save} className="flex flex-wrap items-center gap-3">
+              <input name="score" type="number" min="0" max="100" placeholder="คะแนน 0-100" defaultValue={user.emp_score || ''} className="border border-slate-300 px-3 py-1.5 rounded-lg w-28 text-center text-sm" required />
+              <input name="file" type="file" className="text-xs file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700 file:cursor-pointer" />
+              <button className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-medium transition shadow-sm">
+                {isEditing ? 'บันทึกการแก้ไข' : 'บันทึกคะแนน'}
+              </button>
+              {isEditing && (
+                <button type="button" onClick={() => setIsEditing(false)} className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-medium">
+                  ยกเลิก
+                </button>
+              )}
+            </form>
+          )}
+        </section>
+      )}
+
+      {user.role !== 'employee' && (
+        <section className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+          <h2 className="text-base font-bold text-slate-800 mb-3 pb-2 border-b">รายการรอการประเมิน ({roleNames[user.role]})</h2>
+          {pending.length === 0 ? (
+            <p className="text-slate-400 text-center py-4 text-sm bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
+              ไม่มีรายชื่อพนักงานที่รอการประเมินในขณะนี้
+            </p>
+          ) : (
+            <div className="space-y-2.5">
+              {pending.map((p: any) => (
+                <form key={p.id} onSubmit={(e: any) => { e.preventDefault(); evaluateOther(p.id, e.target.score.value); }} className="flex flex-wrap items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 gap-3 text-sm">
+                  <div>
+                    <span className="font-semibold text-slate-800">{p.name}</span>
+                    <span className="text-slate-500 text-xs ml-2">(ตนเอง: {p.emp_score}{p.boss_score !== undefined ? \`, หัวหน้า: \${p.boss_score}\` : ''})</span>
+                    {p.file_url && <a href={\`\${UPLOAD_URL}/\${p.file_url}\`} target="_blank" className="ml-2 text-blue-600 underline text-xs">ไฟล์หลักฐาน</a>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input name="score" type="number" min="0" max="100" placeholder="0 - 100" className="border border-slate-300 px-2.5 py-1 w-24 rounded-lg text-center text-sm" required />
+                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-medium transition shadow-sm">
+                      บันทึกคะแนน
+                    </button>
+                  </div>
+                </form>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="p-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-slate-50">
+          <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">กระดานสรุปผลการประเมิน (Dashboard)</h2>
+              <p className="text-xs text-slate-500 mt-0.5">สูตรคำนวณค่าเฉลี่ย: (ตนเอง + หัวหน้า + ผอ.) / 3</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {user.role !== 'employee' && (
+                <div className="flex gap-2">
+                  <button onClick={exportCSV} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium shadow-sm transition">
+                    Export Excel
+                  </button>
+                  <label className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium shadow-sm cursor-pointer transition">
+                    Import Excel
+                    <input type="file" accept=".csv" onChange={importCSV} className="hidden" />
+                  </label>
+                </div>
+              )}
+              <input type="text" placeholder="ค้นหาชื่อพนักงาน..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="border border-slate-300 px-3 py-1.5 rounded-lg text-xs w-44 bg-white" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 pt-2 text-center text-xs">
+            <div className="bg-white p-2.5 rounded-lg border border-slate-200"><span className="text-slate-500">รอหัวหน้า</span> <strong className="text-sm text-amber-600 ml-1">{list.filter((x) => x.emp_score && !x.boss_score).length}</strong></div>
+            <div className="bg-white p-2.5 rounded-lg border border-slate-200"><span className="text-slate-500">รอ ผอ.</span> <strong className="text-sm text-blue-600 ml-1">{list.filter((x) => x.boss_score && !x.dir_score).length}</strong></div>
+            <div className="bg-white p-2.5 rounded-lg border border-slate-200"><span className="text-slate-500">เสร็จสมบูรณ์</span> <strong className="text-sm text-emerald-600 ml-1">{list.filter((x) => x.dir_score).length}</strong></div>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-100/75 border-b border-slate-200 text-xs font-semibold text-slate-700 uppercase tracking-wider">
+              <tr>
+                <th className="py-3 px-4">ชื่อพนักงาน</th>
+                <th className="py-3 px-4 text-center">ตนเอง</th>
+                <th className="py-3 px-4 text-center">หัวหน้า</th>
+                <th className="py-3 px-4 text-center">ผอ.</th>
+                <th className="py-3 px-4 text-center font-bold text-slate-900">คะแนนเฉลี่ย</th>
+                <th className="py-3 px-4 text-center">สถานะ</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {list.length === 0 ? (
+                <tr><td colSpan={6} className="py-8 text-center text-slate-400 text-sm">ไม่พบข้อมูลพนักงาน</td></tr>
+              ) : (
+                list.map((emp) => (
+                  <tr key={emp.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3.5 px-4 font-medium text-slate-800">
+                      {emp.name}
+                      {emp.file_url && <a href={\`\${UPLOAD_URL}/\${emp.file_url}\`} target="_blank" className="ml-2 text-xs text-blue-600 underline font-normal">ไฟล์</a>}
+                    </td>
+                    <td className="py-3.5 px-4 text-center text-slate-600">{emp.emp_score ?? '-'}</td>
+                    <td className="py-3.5 px-4 text-center text-slate-600">{emp.boss_score ?? '-'}</td>
+                    <td className="py-3.5 px-4 text-center text-slate-600">{emp.dir_score ?? '-'}</td>
+                    <td className="py-3.5 px-4 text-center font-bold text-blue-600">
+                      {emp.dir_score !== null ? <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold text-xs border border-blue-100">{emp.avg_score}</span> : '-'}
+                    </td>
+                    <td className="py-3.5 px-4 text-center">{getBadge(emp)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex justify-between items-center px-5 py-3 border-t border-slate-200 bg-slate-50/50 text-xs text-slate-500">
+          <span>แสดงหน้า {page} จากทั้งหมด {totalPages} หน้า</span>
+          <div className="flex gap-2">
+            <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="px-3 py-1.5 border border-slate-300 rounded-lg disabled:opacity-40 hover:bg-white transition bg-white text-slate-700 font-medium">
+              &larr; ก่อนหน้า
+            </button>
+            <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="px-3 py-1.5 border border-slate-300 rounded-lg disabled:opacity-40 hover:bg-white transition bg-white text-slate-700 font-medium">
+              ถัดไป &rarr;
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}`
   },
   {
     id: 'frontend-git-push',
-    title: 'Frontend: 6. Push to Git',
+    title: 'Frontend: 4. Push to Git',
     description: 'Git workflow: pull backend updates, stage frontend, commit, and push',
     language: 'bash',
     category: 'frontend',
@@ -334,6 +581,108 @@ git commit -m "feat(frontend): complete evaluation UI and dashboard"
 
 # Push to remote repository
 git push origin main`
+  },
+
+  // ==========================================
+  // --- COMPETITION: SERVER / DEVOPS PRACTICE ---
+  // ==========================================
+  {
+    id: 'server-commands-docker',
+    title: 'Server: 1. Install Docker & Compose',
+    description: 'Install Docker, Docker Compose plugin, and setup user permissions',
+    language: 'bash',
+    category: 'server',
+    practiceType: 'commands',
+    code: `# 1. ติดตั้ง Docker อัตโนมัติ
+curl -fsSL https://get.docker.com/ | sh
+
+# 2. ติดตั้ง Docker Compose Plugin
+sudo apt update && sudo apt install -y docker-compose-plugin
+
+# 3. ให้ User ปัจจุบันใช้งาน Docker ได้โดยไม่ต้องพิมพ์ sudo
+sudo usermod -aG docker $USER && newgrp docker`
+  },
+  {
+    id: 'server-git-gitlab',
+    title: 'Server: 2. Setup GitLab Server',
+    description: 'Run GitLab CE container and retrieve initial root password',
+    language: 'bash',
+    category: 'server',
+    practiceType: 'git',
+    code: `# ติดตั้ง GitLab (Git Server)
+docker run -d --name gitlab --restart always \\
+  -p 80:80 -p 443:443 -p 22:22 \\
+  -v /srv/gitlab/config:/etc/gitlab \\
+  -v /srv/gitlab/logs:/var/log/gitlab \\
+  -v /srv/gitlab/data:/var/opt/gitlab \\
+  gitlab/gitlab-ce:latest
+
+# ดึงรหัสผ่านเริ่มต้นของ root
+docker exec -it gitlab grep 'Password:' /etc/gitlab/initial_root_password`
+  },
+  {
+    id: 'server-commands-compose',
+    title: 'Server: 3. Docker Compose Deploy & Manage',
+    description: 'Build, run, monitor, and stop project containers',
+    language: 'bash',
+    category: 'server',
+    practiceType: 'commands',
+    code: `# 1. เข้าไปที่โฟลเดอร์โปรเจกต์
+cd ~/my-project
+
+# 2. สั่ง Build และรันระบบทั้งหมด (Backend, Frontend, DB) พร้อมกัน
+docker compose up -d --build
+
+# 3. เช็กสถานะการทำงานของคอนเทนเนอร์
+docker compose ps
+
+# 4. ดู Log (กรณีเช็ก Error)
+docker compose logs -f
+
+# 5. ปิดและหยุดระบบทั้งหมด
+docker compose down`
+  },
+  {
+    id: 'server-code-full-script',
+    title: 'Server: 4. Complete Server Setup (67.txt)',
+    description: 'Full bundled script: Docker install, GitLab server, and Docker Compose deployment',
+    language: 'bash',
+    category: 'server',
+    practiceType: 'code',
+    code: `# ติดตั้ง Docker อัตโนมัติ
+curl -fsSL https://get.docker.com/ | sh
+
+# ติดตั้ง Docker Compose Plugin
+sudo apt update && sudo apt install -y docker-compose-plugin
+
+# ให้ User ปัจจุบันใช้งาน Docker ได้โดยไม่ต้องพิมพ์ sudo
+sudo usermod -aG docker $USER && newgrp docker
+
+# ติดตั้ง GitLab (Git Server)
+docker run -d --name gitlab --restart always \\
+  -p 80:80 -p 443:443 -p 22:22 \\
+  -v /srv/gitlab/config:/etc/gitlab \\
+  -v /srv/gitlab/logs:/var/log/gitlab \\
+  -v /srv/gitlab/data:/var/opt/gitlab \\
+  gitlab/gitlab-ce:latest
+
+# ดึงรหัสผ่านเริ่มต้นของ root
+docker exec -it gitlab grep 'Password:' /etc/gitlab/initial_root_password
+
+# เข้าไปที่โฟลเดอร์โปรเจกต์
+cd ~/my-project
+
+# สั่ง Build และรันระบบทั้งหมด (Backend, Frontend, DB) พร้อมกัน
+docker compose up -d --build
+
+# เช็กสถานะการทำงานของคอนเทนเนอร์
+docker compose ps
+
+# ดู Log (กรณีเช็ก Error)
+docker compose logs -f
+
+# ปิดและหยุดระบบทั้งหมด
+docker compose down`
   },
 
   // --- JAVASCRIPT / TYPESCRIPT ---
