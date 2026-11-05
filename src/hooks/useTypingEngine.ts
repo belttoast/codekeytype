@@ -3,6 +3,7 @@ import type { Snippet, UserSettings, TestResult, CharStatus, WpmSample, TestMode
 import { tokenizeCodeToChars } from '../utils/syntaxHighlighter';
 import { playKeySound, playErrorSound } from '../utils/soundEffects';
 import { computeCodePairs } from '../utils/pairMatcher';
+import { getSkipCommentDestination } from '../utils/commentHelper';
 
 interface UseTypingEngineProps {
   snippet: Snippet;
@@ -155,7 +156,8 @@ export function useTypingEngine({
       extraCount += extra.length;
     });
 
-    const missedCount = targetChars.length - correctCount - incorrectCount;
+    const skippedCount = states.filter(s => s === 'skipped').length;
+    const missedCount = Math.max(0, targetChars.length - correctCount - incorrectCount - skippedCount);
 
     const minutes = durationSeconds / 60;
     const wpm = Math.max(0, Math.round((correctCount / 5) / minutes));
@@ -309,6 +311,11 @@ export function useTypingEngine({
           }
         }
 
+        while (prevIdx > 0 && newStates[prevIdx] === 'skipped') {
+          newStates[prevIdx] = 'untouched';
+          prevIdx--;
+        }
+
         if (curSettings.indentMode === 'smart') {
           while (
             prevIdx > 0 &&
@@ -385,6 +392,30 @@ export function useTypingEngine({
         }
       }
 
+      // Check if on an optional comment (skip comment with Tab)
+      if (curSettings.optionalComments && curIdx < chars.length) {
+        const skipDest = getSkipCommentDestination(curIdx, chars);
+        if (skipDest !== null) {
+          const newStates = [...curStates];
+          for (let s = curIdx; s < skipDest; s++) {
+            newStates[s] = 'skipped';
+          }
+          let nextIdx = skipDest;
+          if (curSettings.indentMode === 'smart') {
+            while (nextIdx < chars.length && (chars[nextIdx].char === ' ' || chars[nextIdx].char === '\t')) {
+              newStates[nextIdx] = 'skipped';
+              nextIdx++;
+            }
+          }
+          setCharStates(newStates);
+          setCursorIndex(nextIdx);
+          if (nextIdx >= chars.length) {
+            handleTestComplete();
+          }
+          return;
+        }
+      }
+
       // If not jumping auto-pairs, handle normal Tab indentation
       setTotalKeypresses(prev => prev + 1);
       if (curIdx < chars.length) {
@@ -429,9 +460,31 @@ export function useTypingEngine({
     if (e.key === 'Enter') {
       inputChar = '\n';
       // User pressed Enter: NEVER skip ';' or closing pairs!
-      // Enter is ONLY accepted if expectedChar is literally '\n'.
-      // If expectedChar is ';' or anything else, inputChar '\n' will not match expectedChar,
-      // correctly preventing the user from skipping the semicolon!
+      // Enter is ONLY accepted if expectedChar is literally '\n',
+      // UNLESS cursor is on an optional comment line where Enter skips the comment!
+      if (expectedChar !== '\n' && curSettings.optionalComments) {
+        const skipDest = getSkipCommentDestination(curIdx, chars);
+        if (skipDest !== null) {
+          playKeySound(curSettings.soundType, curSettings.soundVolume, 'Enter');
+          const newStates = [...curStates];
+          for (let s = curIdx; s < skipDest; s++) {
+            newStates[s] = 'skipped';
+          }
+          let nextIdx = skipDest;
+          if (curSettings.indentMode === 'smart') {
+            while (nextIdx < chars.length && (chars[nextIdx].char === ' ' || chars[nextIdx].char === '\t')) {
+              newStates[nextIdx] = 'skipped';
+              nextIdx++;
+            }
+          }
+          setCharStates(newStates);
+          setCursorIndex(nextIdx);
+          if (nextIdx >= chars.length) {
+            handleTestComplete();
+          }
+          return;
+        }
+      }
     }
 
     if (e.key.length > 1 && e.key !== 'Enter') {
@@ -485,6 +538,46 @@ export function useTypingEngine({
         handleTestComplete();
       }
     } else {
+      // Check if user is typing the next code character directly to skip an optional comment
+      if (curSettings.optionalComments) {
+        const skipDest = getSkipCommentDestination(curIdx, chars);
+        if (skipDest !== null && skipDest < chars.length) {
+          let firstCodeIdx = skipDest;
+          if (curSettings.indentMode === 'smart') {
+            while (firstCodeIdx < chars.length && (chars[firstCodeIdx].char === ' ' || chars[firstCodeIdx].char === '\t')) {
+              firstCodeIdx++;
+            }
+          }
+
+          if (firstCodeIdx < chars.length && inputChar === chars[firstCodeIdx].char) {
+            playKeySound(curSettings.soundType, curSettings.soundVolume, inputChar);
+            const newStates = [...curStates];
+            for (let s = curIdx; s < firstCodeIdx; s++) {
+              newStates[s] = 'skipped';
+            }
+            newStates[firstCodeIdx] = 'correct';
+
+            const nextSpawned = new Set(curSpawned);
+            if (curSettings.autoClosePairs && curOpenToClose.has(firstCodeIdx)) {
+              nextSpawned.add(curOpenToClose.get(firstCodeIdx)!);
+            }
+            if (curSpawned.has(firstCodeIdx)) {
+              nextSpawned.delete(firstCodeIdx);
+            }
+            setSpawnedCloseIndices(nextSpawned);
+
+            setCharStates(newStates);
+            const nextIndex = firstCodeIdx + 1;
+            setCursorIndex(nextIndex);
+
+            if (nextIndex >= chars.length) {
+              handleTestComplete();
+            }
+            return;
+          }
+        }
+      }
+
       playErrorSound(curSettings.soundVolume);
       setErrorCount(prev => prev + 1);
 

@@ -10,7 +10,12 @@ import {
   Zap, 
   Bookmark,
   Eye,
-  EyeOff
+  EyeOff,
+  Server,
+  Layout,
+  Terminal,
+  GitBranch,
+  Sparkles
 } from 'lucide-react';
 
 interface HeaderBarProps {
@@ -20,6 +25,12 @@ interface HeaderBarProps {
   onChangeTimeDuration: (duration: TimeDuration) => void;
   selectedLanguage: Language | 'all';
   onChangeLanguage: (lang: Language | 'all') => void;
+  selectedCategory: 'all' | 'backend' | 'frontend';
+  onChangeCategory: (cat: 'all' | 'backend' | 'frontend') => void;
+  practiceType: 'all' | 'commands' | 'code' | 'git';
+  onChangePracticeType: (type: 'all' | 'commands' | 'code' | 'git') => void;
+  availableSnippets: Snippet[];
+  onSelectSnippet: (snippet: Snippet) => void;
   blindModeType: BlindModeType;
   onChangeBlindMode: (blind: BlindModeType) => void;
   currentSnippet: Snippet;
@@ -64,6 +75,12 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   onChangeTimeDuration,
   selectedLanguage,
   onChangeLanguage,
+  selectedCategory,
+  onChangeCategory,
+  practiceType,
+  onChangePracticeType,
+  availableSnippets,
+  onSelectSnippet,
   blindModeType,
   onChangeBlindMode,
   currentSnippet,
@@ -78,7 +95,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   const isTyping = testStatus === 'typing';
 
   return (
-    <header className="w-full max-w-5xl mx-auto pt-6 pb-4 flex flex-col space-y-4 font-mono select-none">
+    <header className="w-full max-w-5xl mx-auto pt-6 pb-4 flex flex-col space-y-3 font-mono select-none">
       {/* Top Navbar */}
       <div className="flex items-center justify-between">
         {/* Brand Logo */}
@@ -136,6 +153,109 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Practice Track Selector Bar (Backend & Frontend Section) */}
+      <div className={`flex flex-wrap items-center justify-between gap-3 p-2 rounded-2xl bg-theme-surface/90 border border-theme-border shadow-sm transition-opacity ${isTyping ? 'opacity-30 hover:opacity-100' : 'opacity-100'}`}>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[11px] font-bold text-theme-dim uppercase tracking-wider px-1 flex items-center gap-1">
+            <Sparkles className="w-3.5 h-3.5 text-theme-accent" /> Track:
+          </span>
+          <button
+            onClick={() => onChangeCategory('all')}
+            className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
+              selectedCategory === 'all'
+                ? 'bg-theme-bg text-theme-main border border-theme-border shadow-sm'
+                : 'text-theme-sub hover:text-theme-main'
+            }`}
+          >
+            All Snippets
+          </button>
+          <button
+            onClick={() => onChangeCategory('backend')}
+            className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              selectedCategory === 'backend'
+                ? 'bg-amber-500/15 text-amber-500 border border-amber-500/40 font-bold shadow-sm'
+                : 'text-theme-sub hover:text-amber-500/80'
+            }`}
+          >
+            <Server className="w-3.5 h-3.5" />
+            <span>Backend Section</span>
+          </button>
+          <button
+            onClick={() => onChangeCategory('frontend')}
+            className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              selectedCategory === 'frontend'
+                ? 'bg-blue-500/15 text-blue-500 border border-blue-500/40 font-bold shadow-sm'
+                : 'text-theme-sub hover:text-blue-500/80'
+            }`}
+          >
+            <Layout className="w-3.5 h-3.5" />
+            <span>Frontend Section</span>
+          </button>
+        </div>
+
+        {/* Sub-Filters: All, Commands, Code, Git */}
+        {selectedCategory !== 'all' && (
+          <div className="flex items-center gap-1 bg-theme-bg/60 p-1 rounded-xl border border-theme-border/50 text-[11px]">
+            <button
+              onClick={() => onChangePracticeType('all')}
+              className={`px-2 py-0.5 rounded-lg transition-all ${
+                practiceType === 'all' ? 'bg-theme-surface text-theme-accent font-bold' : 'text-theme-sub hover:text-theme-main'
+              }`}
+            >
+              All Steps
+            </button>
+            <button
+              onClick={() => onChangePracticeType('commands')}
+              className={`px-2 py-0.5 rounded-lg transition-all flex items-center gap-1 ${
+                practiceType === 'commands' ? 'bg-theme-surface text-theme-accent font-bold' : 'text-theme-sub hover:text-theme-main'
+              }`}
+            >
+              <Terminal className="w-3 h-3" />
+              <span>Commands</span>
+            </button>
+            <button
+              onClick={() => onChangePracticeType('code')}
+              className={`px-2 py-0.5 rounded-lg transition-all flex items-center gap-1 ${
+                practiceType === 'code' ? 'bg-theme-surface text-theme-accent font-bold' : 'text-theme-sub hover:text-theme-main'
+              }`}
+            >
+              <Code2 className="w-3 h-3" />
+              <span>Code</span>
+            </button>
+            <button
+              onClick={() => onChangePracticeType('git')}
+              className={`px-2 py-0.5 rounded-lg transition-all flex items-center gap-1 ${
+                practiceType === 'git' ? 'bg-theme-surface text-theme-accent font-bold' : 'text-theme-sub hover:text-theme-main'
+              }`}
+            >
+              <GitBranch className="w-3 h-3" />
+              <span>Git</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Quick Snippet Selector Pills for the chosen section */}
+      {selectedCategory !== 'all' && availableSnippets.length > 0 && (
+        <div className={`flex items-center gap-1.5 overflow-x-auto pb-1 text-xs select-none transition-opacity ${isTyping ? 'opacity-25 hover:opacity-100' : 'opacity-100'}`}>
+          {availableSnippets.map((s, idx) => (
+            <button
+              key={s.id}
+              onClick={() => onSelectSnippet(s)}
+              className={`px-2.5 py-1 rounded-xl border text-xs font-mono transition-all flex items-center gap-1.5 shrink-0 ${
+                currentSnippet.id === s.id
+                  ? 'bg-theme-accent text-theme-bg font-bold border-theme-accent shadow-sm'
+                  : 'bg-theme-surface/70 border-theme-border/60 text-theme-sub hover:text-theme-main hover:border-theme-border'
+              }`}
+              title={s.description}
+            >
+              <span className="opacity-70">{idx + 1}.</span>
+              <span className="truncate max-w-[170px]">{s.title.replace(/^.*?: \d+\.\s*/, '')}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Mode, Blind Mode & Filter Bar */}
       <div className={`transition-opacity duration-200 ${isTyping ? 'opacity-30 hover:opacity-100' : 'opacity-100'}`}>

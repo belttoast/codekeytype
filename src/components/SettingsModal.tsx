@@ -245,6 +245,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               />
             </label>
 
+            {/* Optional Code Comments Setting */}
+            <label className="flex items-center justify-between p-4 rounded-xl bg-theme-bg border border-theme-border/80 cursor-pointer hover:border-theme-sub transition-colors">
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-theme-main flex items-center gap-2">
+                  <span>Optional Code Comments</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-theme-accent/20 text-theme-accent font-mono">
+                    Tab / Enter / Code to Skip
+                  </span>
+                </span>
+                <p className="text-[11px] text-theme-sub leading-normal">
+                  Write comments if you want, or skip them by pressing Tab, Enter, or by directly typing the next line of code.
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.optionalComments}
+                onChange={(e) => onUpdateSettings({ optionalComments: e.target.checked })}
+                className="w-4 h-4 accent-theme-accent rounded cursor-pointer ml-3"
+              />
+            </label>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="p-4 rounded-xl bg-theme-bg border border-theme-border/80 space-y-2">
                 <span className="text-xs font-semibold text-theme-main block">Indentation Mode</span>

@@ -21,6 +21,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   caretStyle: 'line',
   indentMode: 'smart',
   autoClosePairs: true,
+  optionalComments: true,
   blindModeType: 'off',
   semiBlindIntensity: 35,
   blindFlashDuration: 0.8,
@@ -54,17 +55,34 @@ export function App() {
   const [mode, setMode] = useState<TestMode>('snippet');
   const [timeDuration, setTimeDuration] = useState<TimeDuration>(30);
   const [selectedLanguage, setSelectedLanguage] = useState<Language | 'all'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'backend' | 'frontend'>('backend');
+  const [practiceType, setPracticeType] = useState<'all' | 'commands' | 'code' | 'git'>('all');
 
   const [allSnippetsList, setAllSnippetsList] = useState<Snippet[]>(() => getAllSnippets());
   const [customPresets, setCustomPresets] = useState<Snippet[]>(() => getCustomPresets());
 
+  const availableSectionSnippets = useMemo(() => {
+    let list = allSnippetsList;
+    if (selectedCategory !== 'all') {
+      list = list.filter(s => s.category === selectedCategory);
+    }
+    if (practiceType !== 'all') {
+      list = list.filter(s => s.practiceType === practiceType);
+    }
+    return list;
+  }, [allSnippetsList, selectedCategory, practiceType]);
+
   const filteredSnippets = useMemo(() => {
-    if (selectedLanguage === 'all') return allSnippetsList;
-    return allSnippetsList.filter(s => s.language === selectedLanguage);
-  }, [allSnippetsList, selectedLanguage]);
+    let list = availableSectionSnippets;
+    if (selectedLanguage !== 'all') {
+      list = list.filter(s => s.language === selectedLanguage);
+    }
+    return list;
+  }, [availableSectionSnippets, selectedLanguage]);
 
   const [currentSnippet, setCurrentSnippet] = useState<Snippet>(() => {
-    return allSnippetsList[0] || {
+    const defaultSnippet = allSnippetsList.find(s => s.category === 'backend') || allSnippetsList[0];
+    return defaultSnippet || {
       id: 'fallback',
       title: 'Quick Sort',
       language: 'typescript',
@@ -204,11 +222,38 @@ export function App() {
         selectedLanguage={selectedLanguage}
         onChangeLanguage={(lang) => {
           setSelectedLanguage(lang);
-          const pool = lang === 'all' ? allSnippetsList : allSnippetsList.filter(s => s.language === lang);
+          const pool = lang === 'all' ? availableSectionSnippets : availableSectionSnippets.filter(s => s.language === lang);
           if (pool.length > 0) {
             setCurrentSnippet(pool[0]);
             setTestResult(null);
           }
+        }}
+        selectedCategory={selectedCategory}
+        onChangeCategory={(cat) => {
+          setSelectedCategory(cat);
+          setPracticeType('all');
+          setSelectedLanguage('all');
+          const matched = allSnippetsList.filter(s => cat === 'all' || s.category === cat);
+          if (matched.length > 0) {
+            setCurrentSnippet(matched[0]);
+            setTestResult(null);
+          }
+        }}
+        practiceType={practiceType}
+        onChangePracticeType={(type) => {
+          setPracticeType(type);
+          const matched = allSnippetsList.filter(s => 
+            (selectedCategory === 'all' || s.category === selectedCategory) &&
+            (type === 'all' || s.practiceType === type)
+          );
+          if (matched.length > 0) {
+            setCurrentSnippet(matched[0]);
+            setTestResult(null);
+          }
+        }}
+        availableSnippets={availableSectionSnippets}
+        onSelectSnippet={(s) => {
+          handleSelectSnippet(s);
         }}
         blindModeType={settings.blindModeType}
         onChangeBlindMode={handleChangeBlindMode}

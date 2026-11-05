@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import type { CodeChar, CharStatus, UserSettings } from '../types';
 import { getTokenColor } from '../utils/syntaxHighlighter';
-import { AlertCircle, RotateCcw, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { isCommentOrCommentWhitespace } from '../utils/commentHelper';
+import { AlertCircle, RotateCcw, Sparkles, Eye, EyeOff, MessageSquareCode } from 'lucide-react';
 
 interface TypingAreaProps {
   targetChars: CodeChar[];
@@ -184,6 +185,12 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
 
   const hasActiveSpawnedPairs = spawnedCloseIndices.size > 0;
 
+  const isAtOptionalComment = useMemo(() => {
+    if (!settings.optionalComments) return false;
+    if (cursorIndex >= targetChars.length) return false;
+    return isCommentOrCommentWhitespace(cursorIndex, targetChars);
+  }, [settings.optionalComments, cursorIndex, targetChars]);
+
   return (
     <div className="relative w-full max-w-5xl mx-auto my-auto flex flex-col items-center">
       {/* Top Banner: Status & Blind Mode indicators */}
@@ -199,6 +206,15 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
           <div className="px-3 py-0.5 rounded-full bg-theme-accent/15 border border-theme-accent/40 text-theme-accent text-[11px] font-mono flex items-center gap-1.5 animate-pulse">
             <Sparkles className="w-3 h-3" />
             <span>Auto-pair spawned: press <kbd className="px-1.5 py-0.2 rounded bg-theme-bg border border-theme-border font-bold">Tab</kbd> to exit pair (then type ;)</span>
+          </div>
+        )}
+
+        {isAtOptionalComment && (
+          <div className="px-3 py-0.5 rounded-full bg-theme-surface border border-theme-border text-theme-sub text-[11px] font-mono flex items-center gap-1.5 animate-pulse shadow-sm">
+            <MessageSquareCode className="w-3.5 h-3.5 text-theme-accent" />
+            <span>
+              Comment optional &bull; press <kbd className="px-1.5 py-0.2 rounded bg-theme-bg border border-theme-border font-bold text-theme-main">Tab</kbd> / <kbd className="px-1.5 py-0.2 rounded bg-theme-bg border border-theme-border font-bold text-theme-main">Enter</kbd> or type code to skip
+            </span>
           </div>
         )}
 
@@ -339,12 +355,16 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
                       charColorClass = `${getTokenColor(codeChar.tokenType)} font-semibold drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]`;
                     } else if (charState === 'incorrect') {
                       charColorClass = 'text-theme-error bg-theme-errorBg font-semibold rounded-xs underline decoration-theme-error decoration-2';
+                    } else if (charState === 'skipped') {
+                      charColorClass = 'text-theme-dim opacity-40 italic select-none';
                     } else if (isSpawnedPair) {
                       charColorClass = 'text-theme-accent bg-theme-accent/20 ring-1 ring-theme-accent/60 font-bold rounded-xs px-0.5 shadow-[0_0_8px_var(--color-accent)] animate-pulse';
                     } else if (isCharHidden) {
                       charColorClass = showMaskPlaceholder 
                         ? 'opacity-0 border-b border-theme-border/40' 
                         : 'opacity-0 select-none';
+                    } else if (codeChar.tokenType === 'comment') {
+                      charColorClass = 'text-[var(--syntax-comment)] opacity-70 italic font-normal';
                     } else {
                       charColorClass = 'text-theme-sub/65 font-normal';
                     }
@@ -364,6 +384,8 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
                                 ? 'text-theme-accent/80 font-bold' 
                                 : charState === 'incorrect' 
                                 ? 'text-theme-error bg-theme-errorBg' 
+                                : charState === 'skipped'
+                                ? 'opacity-25'
                                 : isCharHidden
                                 ? 'opacity-0'
                                 : 'text-theme-sub/40'

@@ -32,7 +32,7 @@ export type TestMode = 'snippet' | 'time' | 'zen';
 
 export type TimeDuration = 15 | 30 | 60 | 120;
 
-export type CharStatus = 'untouched' | 'correct' | 'incorrect' | 'extra';
+export type CharStatus = 'untouched' | 'correct' | 'incorrect' | 'extra' | 'skipped';
 
 export type BlindModeType = 'off' | 'semi-blind' | 'blind' | 'fully-blind';
 
@@ -50,7 +50,8 @@ export interface Snippet {
   description?: string;
   language: Language;
   code: string;
-  category?: 'algorithm' | 'real-world' | 'short' | 'custom' | 'general';
+  category?: 'algorithm' | 'real-world' | 'short' | 'custom' | 'general' | 'frontend' | 'backend';
+  practiceType?: 'commands' | 'code' | 'git';
   isCustom?: boolean;
   createdAt?: number;
   bestWpm?: number;
@@ -90,6 +91,7 @@ export interface UserSettings {
   caretStyle: CaretStyle;
   indentMode: IndentMode;
   autoClosePairs: boolean;
+  optionalComments: boolean;
   blindModeType: BlindModeType;
   semiBlindIntensity: number; // 10 to 90 percentage of code hidden
   blindFlashDuration: number; // seconds line is shown before disappearing
