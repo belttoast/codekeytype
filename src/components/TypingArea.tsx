@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import type { CodeChar, CharStatus, UserSettings } from '../types';
 import { getTokenColor } from '../utils/syntaxHighlighter';
 import { isCommentOrCommentWhitespace } from '../utils/commentHelper';
+import { useTranslation } from '../utils/translations';
 import { AlertCircle, RotateCcw, Sparkles, Eye, EyeOff, MessageSquareCode } from 'lucide-react';
 
 interface TypingAreaProps {
@@ -191,6 +192,8 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
     return isCommentOrCommentWhitespace(cursorIndex, targetChars);
   }, [settings.optionalComments, cursorIndex, targetChars]);
 
+  const t = useTranslation(settings.uiLanguage);
+
   return (
     <div className="relative w-full max-w-5xl mx-auto my-auto flex flex-col items-center">
       {/* Top Banner: Status & Blind Mode indicators */}
@@ -198,23 +201,21 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
         {capsLockActive && (
           <div className="px-3 py-1 rounded-full bg-theme-accent/20 border border-theme-accent text-theme-accent text-xs font-mono flex items-center gap-1.5 animate-bounce">
             <AlertCircle className="w-3.5 h-3.5" />
-            <span>Caps Lock is ON</span>
+            <span>{t.capsLockOn}</span>
           </div>
         )}
 
         {hasActiveSpawnedPairs && (
           <div className="px-3 py-0.5 rounded-full bg-theme-accent/15 border border-theme-accent/40 text-theme-accent text-[11px] font-mono flex items-center gap-1.5 animate-pulse">
             <Sparkles className="w-3 h-3" />
-            <span>Auto-pair spawned: press <kbd className="px-1.5 py-0.2 rounded bg-theme-bg border border-theme-border font-bold">Tab</kbd> to exit pair (then type ;)</span>
+            <span>{t.autoPairSpawned}</span>
           </div>
         )}
 
         {isAtOptionalComment && (
           <div className="px-3 py-0.5 rounded-full bg-theme-surface border border-theme-border text-theme-sub text-[11px] font-mono flex items-center gap-1.5 animate-pulse shadow-sm">
             <MessageSquareCode className="w-3.5 h-3.5 text-theme-accent" />
-            <span>
-              Comment optional &bull; press <kbd className="px-1.5 py-0.2 rounded bg-theme-bg border border-theme-border font-bold text-theme-main">Tab</kbd> / <kbd className="px-1.5 py-0.2 rounded bg-theme-bg border border-theme-border font-bold text-theme-main">Enter</kbd> or type code to skip
-            </span>
+            <span>{t.commentOptional}</span>
           </div>
         )}
 
@@ -229,14 +230,14 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
               <>
                 <Eye className="w-3 h-3 text-theme-accent animate-pulse" />
                 <span className="text-theme-accent font-semibold">
-                  Flashing line {activeLineIndex + 1} ({settings.blindFlashDuration < 1 ? `${Math.round(settings.blindFlashDuration * 1000)}ms` : `${settings.blindFlashDuration}s`})... memorize!
+                  {t.flashingLine} {activeLineIndex + 1} ({settings.blindFlashDuration < 1 ? `${Math.round(settings.blindFlashDuration * 1000)}ms` : `${settings.blindFlashDuration}s`})... {t.memorize}
                 </span>
               </>
             ) : (
               <>
                 <EyeOff className="w-3 h-3 text-theme-sub" />
                 <span className="text-theme-sub">
-                  Line {activeLineIndex + 1} hidden (type from memory &bull; <span className="text-theme-accent underline">click to re-flash</span>)
+                  {t.flashingLine} {activeLineIndex + 1} {t.lineHidden}
                 </span>
               </>
             )}
@@ -246,14 +247,14 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
         {settings.blindModeType === 'semi-blind' && (
           <div className="px-3 py-0.5 rounded-full bg-theme-surface border border-theme-border text-theme-sub text-[11px] font-mono flex items-center gap-1.5">
             <EyeOff className="w-3 h-3 text-theme-accent" />
-            <span>Semi-blind ({settings.semiBlindIntensity}% hidden): Missing parts reveal as you type</span>
+            <span>{t.semiBlindLabel} ({settings.semiBlindIntensity}% {t.hiddenLabel}): {t.semiBlindDesc}</span>
           </div>
         )}
 
         {settings.blindModeType === 'fully-blind' && (
           <div className="px-3 py-0.5 rounded-full bg-theme-surface border border-theme-border text-theme-sub text-[11px] font-mono flex items-center gap-1.5">
             <EyeOff className="w-3 h-3 text-theme-accent" />
-            <span>Fully blind: Only comments visible, code reveals as you type</span>
+            <span>{t.fullyBlindBanner}</span>
           </div>
         )}
       </div>
@@ -298,7 +299,7 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
             className="absolute inset-0 z-20 flex items-center justify-center bg-theme-bg/60 backdrop-blur-xs rounded-2xl cursor-pointer"
           >
             <div className="px-5 py-2.5 rounded-xl bg-theme-surface border border-theme-border text-theme-main text-xs font-mono shadow-lg flex items-center gap-2">
-              <span>Click or start typing to focus</span>
+              <span>{t.clickToFocus}</span>
             </div>
           </div>
         )}

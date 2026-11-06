@@ -17,6 +17,7 @@ import { CustomSnippetModal } from './components/CustomSnippetModal';
 import { SettingsModal } from './components/SettingsModal';
 
 const DEFAULT_SETTINGS: UserSettings = {
+  uiLanguage: 'en',
   theme: 'serika-dark',
   caretStyle: 'line',
   indentMode: 'smart',
@@ -162,6 +163,13 @@ export function App() {
     }));
   }, []);
 
+  const handleToggleLanguage = useCallback(() => {
+    setSettings(prev => ({
+      ...prev,
+      uiLanguage: prev.uiLanguage === 'th' ? 'en' : 'th',
+    }));
+  }, []);
+
   const handleUpdateSettings = useCallback((newSettings: Partial<UserSettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
   }, []);
@@ -269,6 +277,7 @@ export function App() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         settings={settings}
         onToggleSound={handleToggleSound}
+        onToggleLanguage={handleToggleLanguage}
         liveStats={liveMetrics}
         testStatus={testResult ? 'completed' : status}
       />
@@ -278,6 +287,7 @@ export function App() {
           <ResultsModal
             result={testResult}
             snippet={currentSnippet}
+            uiLanguage={settings.uiLanguage}
             onRestart={handleRestart}
             onNextSnippet={handleNextSnippet}
             onSaveAsPreset={() => reloadSnippets()}
@@ -340,6 +350,7 @@ export function App() {
         onClose={() => setIsCustomModalOpen(false)}
         onSelectSnippet={handleSelectSnippet}
         initialCode={pastedCodeInitial}
+        uiLanguage={settings.uiLanguage}
       />
 
       <SettingsModal

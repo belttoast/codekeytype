@@ -1,6 +1,7 @@
 import React from 'react';
 import type { UserSettings, ThemeId, CaretStyle, IndentMode, SoundType, BlindModeType } from '../types';
-import { X, Sliders, Volume2, Palette, Terminal, Type, EyeOff } from 'lucide-react';
+import { useTranslation } from '../utils/translations';
+import { X, Sliders, Volume2, Palette, Terminal, Type, EyeOff, Languages } from 'lucide-react';
 import { playKeySound } from '../utils/soundEffects';
 
 interface SettingsModalProps {
@@ -58,6 +59,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onUpdateSettings,
 }) => {
+  const t = useTranslation(settings.uiLanguage);
   if (!isOpen) return null;
 
   return (
@@ -72,8 +74,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <Sliders className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-theme-main">Settings</h2>
-              <p className="text-xs text-theme-sub">Configure your code typing environment</p>
+              <h2 className="text-lg font-bold text-theme-main">{t.settingsModalTitle}</h2>
+              <p className="text-xs text-theme-sub">{settings.uiLanguage === 'th' ? 'ปรับแต่งสภาพแวดล้อมการฝึกพิมพ์โค้ดของคุณ' : 'Configure your code typing environment'}</p>
             </div>
           </div>
           <button
@@ -85,11 +87,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         <div className="p-6 space-y-6 overflow-y-auto">
+          {/* Site Language Switcher Section */}
+          <section className="space-y-3 pb-2 border-b border-theme-border/60">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-theme-sub">
+              <Languages className="w-4 h-4 text-theme-accent" />
+              <span>{t.siteLanguage}</span>
+            </div>
+            <div className="p-4 rounded-xl bg-theme-bg border border-theme-border/80 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <span className="text-xs font-bold text-theme-main block">{t.siteLanguage}</span>
+                <p className="text-[11px] text-theme-sub leading-normal mt-0.5">{t.siteLanguageDesc}</p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => onUpdateSettings({ uiLanguage: 'en' })}
+                  className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-all ${
+                    settings.uiLanguage === 'en'
+                      ? 'bg-theme-accent text-theme-bg font-bold shadow-sm'
+                      : 'bg-theme-surface text-theme-sub hover:text-theme-main'
+                  }`}
+                >
+                  English (EN)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onUpdateSettings({ uiLanguage: 'th' })}
+                  className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-all ${
+                    settings.uiLanguage === 'th'
+                      ? 'bg-theme-accent text-theme-bg font-bold shadow-sm'
+                      : 'bg-theme-surface text-theme-sub hover:text-theme-main'
+                  }`}
+                >
+                  ภาษาไทย (TH)
+                </button>
+              </div>
+            </div>
+          </section>
+
           {/* Blind Training Modes Section */}
           <section className="space-y-3">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-theme-sub">
               <EyeOff className="w-4 h-4 text-theme-accent" />
-              <span>Blind Training Modes</span>
+              <span>{t.blindTrainingModes}</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -1,5 +1,6 @@
 import React from 'react';
 import type { TestMode, TimeDuration, Language, UserSettings, Snippet, BlindModeType } from '../types';
+import { useTranslation } from '../utils/translations';
 import { 
   Code2, 
   Settings, 
@@ -15,7 +16,8 @@ import {
   Layout,
   Terminal,
   GitBranch,
-  Sparkles
+  Sparkles,
+  Languages
 } from 'lucide-react';
 
 interface HeaderBarProps {
@@ -39,6 +41,7 @@ interface HeaderBarProps {
   onOpenSettings: () => void;
   settings: UserSettings;
   onToggleSound: () => void;
+  onToggleLanguage: () => void;
   liveStats: {
     wpm: number;
     accuracy: number;
@@ -64,13 +67,6 @@ const LANGUAGES_FILTER: { id: Language | 'all'; label: string }[] = [
   { id: 'css', label: 'css' },
 ];
 
-const BLIND_MODES: { id: BlindModeType; label: string; tooltip: string }[] = [
-  { id: 'off', label: 'visible', tooltip: 'Normal: Full code visible' },
-  { id: 'semi-blind', label: 'semi', tooltip: 'Semi-Blind: Random code parts hidden' },
-  { id: 'blind', label: 'flash', tooltip: 'Blind: Code flashes then disappears on each line' },
-  { id: 'fully-blind', label: 'comment only', tooltip: 'Fully Blind: Only comments visible, code hidden' },
-];
-
 export const HeaderBar: React.FC<HeaderBarProps> = ({
   mode,
   onChangeMode,
@@ -92,10 +88,12 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   onOpenSettings,
   settings,
   onToggleSound,
+  onToggleLanguage,
   liveStats,
   testStatus,
 }) => {
   const isTyping = testStatus === 'typing';
+  const t = useTranslation(settings.uiLanguage);
 
   return (
     <header className="w-full max-w-5xl mx-auto pt-6 pb-4 flex flex-col space-y-3 font-mono select-none">
@@ -124,7 +122,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             title="Paste custom code or manage saved presets (Ctrl+V)"
           >
             <Bookmark className="w-3.5 h-3.5 text-theme-accent group-hover:scale-110 transition-transform" />
-            <span className="font-medium">Custom Code</span>
+            <span className="font-medium">{t.customCode}</span>
             <span className="px-1.5 py-0.2 rounded-full bg-theme-bg border border-theme-border text-[10px] text-theme-accent font-bold">
               {customPresetsCount}
             </span>
@@ -137,7 +135,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           <button
             onClick={onToggleSound}
             className="p-2 rounded-xl bg-theme-surface hover:bg-theme-card border border-theme-border text-theme-sub hover:text-theme-main transition-colors"
-            title={`Sound: ${settings.soundType} (Click to toggle)`}
+            title={`${t.sound}: ${settings.soundType}`}
           >
             {settings.soundType === 'off' ? (
               <VolumeX className="w-4 h-4" />
@@ -146,11 +144,21 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             )}
           </button>
 
+          {/* Site Language Toggle (EN / TH) */}
+          <button
+            onClick={onToggleLanguage}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-theme-surface hover:bg-theme-card border border-theme-border hover:border-theme-accent/60 text-xs text-theme-main transition-all shadow-sm group"
+            title={settings.uiLanguage === 'th' ? 'Switch to English' : 'เปลี่ยนเป็นภาษาไทย'}
+          >
+            <Languages className="w-3.5 h-3.5 text-theme-accent group-hover:scale-110 transition-transform" />
+            <span className="font-bold text-[11px] uppercase tracking-wider">{settings.uiLanguage === 'th' ? 'ไทย' : 'EN'}</span>
+          </button>
+
           {/* Settings Button */}
           <button
             onClick={onOpenSettings}
             className="p-2 rounded-xl bg-theme-surface hover:bg-theme-card border border-theme-border text-theme-sub hover:text-theme-main transition-colors"
-            title="Settings & Themes"
+            title={t.settings}
           >
             <Settings className="w-4 h-4" />
           </button>
@@ -171,7 +179,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
                 : 'text-theme-sub hover:text-theme-main'
             }`}
           >
-            All Snippets
+            {t.allSections}
           </button>
           <button
             onClick={() => onChangeCategory('backend')}
@@ -182,7 +190,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             }`}
           >
             <Server className="w-3.5 h-3.5" />
-            <span>Backend Section</span>
+            <span>{t.backendSection}</span>
           </button>
           <button
             onClick={() => onChangeCategory('frontend')}
@@ -193,7 +201,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             }`}
           >
             <Layout className="w-3.5 h-3.5" />
-            <span>Frontend Section</span>
+            <span>{t.frontendSection}</span>
           </button>
           <button
             onClick={() => onChangeCategory('server')}
@@ -204,7 +212,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             }`}
           >
             <Terminal className="w-3.5 h-3.5" />
-            <span>Server Section</span>
+            <span>{t.serverSection}</span>
           </button>
         </div>
 
@@ -217,7 +225,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
                 practiceType === 'all' ? 'bg-theme-surface text-theme-accent font-bold' : 'text-theme-sub hover:text-theme-main'
               }`}
             >
-              All Steps
+              {t.allSteps}
             </button>
             <button
               onClick={() => onChangePracticeType('commands')}
@@ -226,7 +234,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
               }`}
             >
               <Terminal className="w-3 h-3" />
-              <span>Commands</span>
+              <span>{t.commands}</span>
             </button>
             <button
               onClick={() => onChangePracticeType('code')}
@@ -235,7 +243,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
               }`}
             >
               <Code2 className="w-3 h-3" />
-              <span>Code</span>
+              <span>{t.code}</span>
             </button>
             <button
               onClick={() => onChangePracticeType('git')}
@@ -244,7 +252,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
               }`}
             >
               <GitBranch className="w-3 h-3" />
-              <span>Git</span>
+              <span>{t.git}</span>
             </button>
           </div>
         )}
@@ -285,7 +293,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
               }`}
             >
               <Code className="w-3 h-3" />
-              <span>snippet</span>
+              <span>{t.modeSnippet}</span>
             </button>
 
             <button
@@ -297,7 +305,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
               }`}
             >
               <Clock className="w-3 h-3" />
-              <span>time</span>
+              <span>{t.modeTime}</span>
             </button>
 
             <button
@@ -309,7 +317,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
               }`}
             >
               <Zap className="w-3 h-3" />
-              <span>zen</span>
+              <span>{t.modeZen}</span>
             </button>
           </div>
 
@@ -318,16 +326,20 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             <span className="px-1 text-theme-dim">
               {blindModeType === 'off' ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3 text-theme-accent" />}
             </span>
-            {BLIND_MODES.map(bm => (
+            {[
+              { id: 'off', label: t.blindVisible },
+              { id: 'semi-blind', label: t.blindSemi },
+              { id: 'blind', label: t.blindFlash },
+              { id: 'fully-blind', label: t.blindComment },
+            ].map(bm => (
               <button
                 key={bm.id}
-                onClick={() => onChangeBlindMode(bm.id)}
+                onClick={() => onChangeBlindMode(bm.id as BlindModeType)}
                 className={`px-2 py-0.5 rounded-lg text-[11px] capitalize transition-all ${
                   blindModeType === bm.id
                     ? 'bg-theme-surface text-theme-accent font-bold shadow-sm'
                     : 'hover:text-theme-main'
                 }`}
-                title={bm.tooltip}
               >
                 {bm.label}
               </button>

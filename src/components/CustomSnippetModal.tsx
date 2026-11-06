@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import type { Snippet, Language } from '../types';
+import type { Snippet, Language, UiLanguage } from '../types';
+import { useTranslation } from '../utils/translations';
 import { detectLanguage, saveCustomPreset, getCustomPresets, deleteCustomPreset, exportPresetsToJson, importPresetsFromJson } from '../utils/presetStorage';
 import { X, Clipboard, Save, Play, Trash2, Edit3, Download, Upload, Check, Search, Code, Sparkles } from 'lucide-react';
 
@@ -8,6 +9,7 @@ interface CustomSnippetModalProps {
   onClose: () => void;
   onSelectSnippet: (snippet: Snippet) => void;
   initialCode?: string;
+  uiLanguage?: UiLanguage;
 }
 
 const LANGUAGES: { id: Language; label: string }[] = [
@@ -30,9 +32,11 @@ export const CustomSnippetModal: React.FC<CustomSnippetModalProps> = ({
   onClose,
   onSelectSnippet,
   initialCode = '',
+  uiLanguage = 'en',
 }) => {
   const [activeTab, setActiveTab] = useState<'editor' | 'library'>('editor');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const t = useTranslation(uiLanguage);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -195,12 +199,12 @@ export const CustomSnippetModal: React.FC<CustomSnippetModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold text-theme-main flex items-center gap-2">
-                Custom Code & Presets
+                {t.customModalTitle}
                 <span className="text-xs px-2 py-0.5 rounded-full bg-theme-accent/20 text-theme-accent font-mono font-medium">
-                  Ctrl+V ready
+                  {t.ctrlV} ready
                 </span>
               </h2>
-              <p className="text-xs text-theme-sub">Paste any code snippet, save as a preset, and test your muscle memory</p>
+              <p className="text-xs text-theme-sub">{t.pasteOrWriteDesc}</p>
             </div>
           </div>
 
@@ -214,7 +218,9 @@ export const CustomSnippetModal: React.FC<CustomSnippetModalProps> = ({
                     : 'text-theme-sub hover:text-theme-main'
                 }`}
               >
-                {editingId ? 'Edit Snippet' : 'Paste & Create'}
+                {editingId 
+                  ? (uiLanguage === 'th' ? 'แก้ไขโค้ด' : 'Edit Snippet') 
+                  : (uiLanguage === 'th' ? 'วางและสร้าง' : 'Paste & Create')}
               </button>
               <button
                 onClick={() => setActiveTab('library')}
@@ -224,7 +230,7 @@ export const CustomSnippetModal: React.FC<CustomSnippetModalProps> = ({
                     : 'text-theme-sub hover:text-theme-main'
                 }`}
               >
-                <span>My Presets</span>
+                <span>{uiLanguage === 'th' ? 'คลังพรีเซ็ต' : 'My Presets'}</span>
                 <span className="px-1.5 py-0.2 rounded-full bg-theme-surface text-[10px]">
                   {presets.length}
                 </span>

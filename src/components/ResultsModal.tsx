@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import type { TestResult, Snippet } from '../types';
+import type { TestResult, Snippet, UiLanguage } from '../types';
+import { useTranslation } from '../utils/translations';
 import { WpmChart } from './WpmChart';
 import confetti from 'canvas-confetti';
 import { RotateCcw, ArrowRight, Share2, CheckCircle2, BookmarkPlus, Check } from 'lucide-react';
@@ -8,6 +9,7 @@ import { saveCustomPreset } from '../utils/presetStorage';
 interface ResultsModalProps {
   result: TestResult;
   snippet: Snippet;
+  uiLanguage?: UiLanguage;
   onRestart: () => void;
   onNextSnippet: () => void;
   onSaveAsPreset?: (snippet: Snippet) => void;
@@ -16,12 +18,14 @@ interface ResultsModalProps {
 export const ResultsModal: React.FC<ResultsModalProps> = ({
   result,
   snippet,
+  uiLanguage = 'en',
   onRestart,
   onNextSnippet,
   onSaveAsPreset,
 }) => {
   const [copied, setCopied] = useState(false);
   const [savedPreset, setSavedPreset] = useState(false);
+  const t = useTranslation(uiLanguage);
 
   useEffect(() => {
     if (result.accuracy >= 95 || result.wpm >= 60) {
@@ -84,12 +88,12 @@ Time: ${result.timeSeconds}s`;
             {savedPreset ? (
               <>
                 <Check className="w-3.5 h-3.5 text-theme-accent" />
-                <span className="text-theme-accent font-medium">Saved to My Presets</span>
+                <span className="text-theme-accent font-medium">{t.savedToPresets}</span>
               </>
             ) : (
               <>
                 <BookmarkPlus className="w-3.5 h-3.5" />
-                <span>Save to My Presets</span>
+                <span>{t.saveToPresets}</span>
               </>
             )}
           </button>
@@ -100,7 +104,7 @@ Time: ${result.timeSeconds}s`;
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="p-5 rounded-2xl bg-theme-surface border border-theme-border/80 flex flex-col">
           <span className="text-xs font-medium text-theme-sub uppercase tracking-wider font-mono">
-            WPM
+            {t.wpm}
           </span>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-4xl md:text-5xl font-black text-theme-accent font-mono">
@@ -108,13 +112,13 @@ Time: ${result.timeSeconds}s`;
             </span>
           </div>
           <span className="text-xs text-theme-sub mt-2 font-mono">
-            CPM: {result.cpm}
+            {t.cpm}: {result.cpm}
           </span>
         </div>
 
         <div className="p-5 rounded-2xl bg-theme-surface border border-theme-border/80 flex flex-col">
           <span className="text-xs font-medium text-theme-sub uppercase tracking-wider font-mono">
-            Accuracy
+            {t.accuracy}
           </span>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-4xl md:text-5xl font-black text-theme-main font-mono">
@@ -122,13 +126,13 @@ Time: ${result.timeSeconds}s`;
             </span>
           </div>
           <span className="text-xs text-theme-sub mt-2 font-mono">
-            Errors: {result.incorrectChars}
+            {t.errors}: {result.incorrectChars}
           </span>
         </div>
 
         <div className="p-5 rounded-2xl bg-theme-surface border border-theme-border/80 flex flex-col">
           <span className="text-xs font-medium text-theme-sub uppercase tracking-wider font-mono">
-            Raw WPM
+            {t.rawWpm}
           </span>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-4xl md:text-5xl font-black text-theme-sub font-mono">
@@ -136,13 +140,13 @@ Time: ${result.timeSeconds}s`;
             </span>
           </div>
           <span className="text-xs text-theme-sub mt-2 font-mono">
-            Without penalty
+            {t.withoutPenalty}
           </span>
         </div>
 
         <div className="p-5 rounded-2xl bg-theme-surface border border-theme-border/80 flex flex-col">
           <span className="text-xs font-medium text-theme-sub uppercase tracking-wider font-mono">
-            Consistency
+            {t.consistency}
           </span>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-4xl md:text-5xl font-black text-theme-main font-mono">
@@ -150,7 +154,7 @@ Time: ${result.timeSeconds}s`;
             </span>
           </div>
           <span className="text-xs text-theme-sub mt-2 font-mono">
-            Pacing smoothness
+            {t.pacingSmoothness}
           </span>
         </div>
       </div>
@@ -161,21 +165,21 @@ Time: ${result.timeSeconds}s`;
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-xl bg-theme-surface/40 border border-theme-border/40 font-mono text-xs">
         <div>
-          <span className="text-theme-sub">Time:</span>{' '}
+          <span className="text-theme-sub">{t.time}:</span>{' '}
           <span className="text-theme-main font-bold">{result.timeSeconds}s</span>
         </div>
         <div>
-          <span className="text-theme-sub">Characters:</span>{' '}
+          <span className="text-theme-sub">{t.characters}:</span>{' '}
           <span className="text-theme-correct">{result.correctChars}</span> /{' '}
           <span className="text-theme-error">{result.incorrectChars}</span> /{' '}
           <span className="text-theme-sub">{result.extraChars}</span>
         </div>
         <div>
-          <span className="text-theme-sub">Total Keypresses:</span>{' '}
+          <span className="text-theme-sub">{t.totalKeypresses}:</span>{' '}
           <span className="text-theme-main font-bold">{result.totalChars}</span>
         </div>
         <div>
-          <span className="text-theme-sub">Missed Characters:</span>{' '}
+          <span className="text-theme-sub">{t.missedCharacters}:</span>{' '}
           <span className="text-theme-main font-bold">{result.missedChars}</span>
         </div>
       </div>
@@ -186,7 +190,7 @@ Time: ${result.timeSeconds}s`;
           className="px-6 py-3 rounded-xl bg-theme-surface hover:bg-theme-card border border-theme-border text-theme-main font-medium text-sm flex items-center gap-2.5 transition-all shadow-sm group"
         >
           <RotateCcw className="w-4 h-4 text-theme-accent group-hover:-rotate-90 transition-transform duration-200" />
-          <span>Restart Test</span>
+          <span>{t.restartTest}</span>
           <kbd className="text-[11px] font-mono px-2 py-0.5 rounded bg-theme-bg text-theme-sub border border-theme-border">
             Tab + Enter
           </kbd>
@@ -196,7 +200,7 @@ Time: ${result.timeSeconds}s`;
           onClick={onNextSnippet}
           className="px-6 py-3 rounded-xl bg-theme-accent hover:bg-theme-accentHover text-theme-bg font-bold text-sm flex items-center gap-2 shadow-lg shadow-theme-accent/20 transition-all"
         >
-          <span>Next Snippet</span>
+          <span>{t.nextSnippet}</span>
           <ArrowRight className="w-4 h-4" />
         </button>
 
@@ -207,12 +211,12 @@ Time: ${result.timeSeconds}s`;
           {copied ? (
             <>
               <CheckCircle2 className="w-4 h-4 text-theme-accent" />
-              <span className="text-theme-accent font-medium">Copied!</span>
+              <span className="text-theme-accent font-medium">{t.copied}</span>
             </>
           ) : (
             <>
               <Share2 className="w-4 h-4" />
-              <span>Copy Stats</span>
+              <span>{t.copyResult}</span>
             </>
           )}
         </button>

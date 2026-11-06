@@ -36,6 +36,8 @@ export type TimeDuration = 15 | 30 | 60 | 120;
 
 export type CharStatus = 'untouched' | 'correct' | 'incorrect' | 'extra' | 'skipped';
 
+export type UiLanguage = 'en' | 'th';
+
 export type BlindModeType = 'off' | 'semi-blind' | 'blind' | 'fully-blind';
 
 export interface CodeChar {
@@ -89,6 +91,7 @@ export interface TestResult {
 }
 
 export interface UserSettings {
+  uiLanguage: UiLanguage;
   theme: ThemeId;
   caretStyle: CaretStyle;
   indentMode: IndentMode;
