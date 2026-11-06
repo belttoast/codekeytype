@@ -67,7 +67,10 @@ export function App() {
       list = list.filter(s => s.category === selectedCategory);
     }
     if (practiceType !== 'all') {
-      list = list.filter(s => s.practiceType === practiceType);
+      const hasSpecificType = list.some(s => s.practiceType === practiceType);
+      if (hasSpecificType) {
+        list = list.filter(s => s.practiceType === practiceType);
+      }
     }
     return list;
   }, [allSnippetsList, selectedCategory, practiceType]);
@@ -244,7 +247,7 @@ export function App() {
           setPracticeType(type);
           const matched = allSnippetsList.filter(s => 
             (selectedCategory === 'all' || s.category === selectedCategory) &&
-            (type === 'all' || s.practiceType === type)
+            (type === 'all' || s.practiceType === type || (selectedCategory === 'server' && !s.practiceType))
           );
           if (matched.length > 0) {
             setCurrentSnippet(matched[0]);

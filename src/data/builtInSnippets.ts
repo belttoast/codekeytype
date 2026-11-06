@@ -587,88 +587,26 @@ git push origin main`
   // --- COMPETITION: SERVER / DEVOPS PRACTICE ---
   // ==========================================
   {
-    id: 'server-commands-docker',
-    title: 'Server: 1. Install Docker & Compose',
-    description: 'Install Docker, Docker Compose plugin, and setup user permissions',
+    id: 'server-setup',
+    title: 'Server: Setup & Deployment (Docker, GitLab, Compose)',
+    description: 'Docker install, GitLab CE server, and Docker Compose deployment',
     language: 'bash',
     category: 'server',
-    practiceType: 'commands',
-    code: `# 1. ติดตั้ง Docker อัตโนมัติ
+    code: `#ติดตั้ง Docker อัตโนมัติ
 curl -fsSL https://get.docker.com/ | sh
-
-# 2. ติดตั้ง Docker Compose Plugin
+#ติดตั้ง Docker Compose Plugin
 sudo apt update && sudo apt install -y docker-compose-plugin
-
-# 3. ให้ User ปัจจุบันใช้งาน Docker ได้โดยไม่ต้องพิมพ์ sudo
-sudo usermod -aG docker $USER && newgrp docker`
-  },
-  {
-    id: 'server-git-gitlab',
-    title: 'Server: 2. Setup GitLab Server',
-    description: 'Run GitLab CE container and retrieve initial root password',
-    language: 'bash',
-    category: 'server',
-    practiceType: 'git',
-    code: `# ติดตั้ง GitLab (Git Server)
-docker run -d --name gitlab --restart always \\
-  -p 80:80 -p 443:443 -p 22:22 \\
-  -v /srv/gitlab/config:/etc/gitlab \\
-  -v /srv/gitlab/logs:/var/log/gitlab \\
-  -v /srv/gitlab/data:/var/opt/gitlab \\
-  gitlab/gitlab-ce:latest
-
-# ดึงรหัสผ่านเริ่มต้นของ root
-docker exec -it gitlab grep 'Password:' /etc/gitlab/initial_root_password`
-  },
-  {
-    id: 'server-commands-compose',
-    title: 'Server: 3. Docker Compose Deploy & Manage',
-    description: 'Build, run, monitor, and stop project containers',
-    language: 'bash',
-    category: 'server',
-    practiceType: 'commands',
-    code: `# 1. เข้าไปที่โฟลเดอร์โปรเจกต์
-cd ~/my-project
-
-# 2. สั่ง Build และรันระบบทั้งหมด (Backend, Frontend, DB) พร้อมกัน
-docker compose up -d --build
-
-# 3. เช็กสถานะการทำงานของคอนเทนเนอร์
-docker compose ps
-
-# 4. ดู Log (กรณีเช็ก Error)
-docker compose logs -f
-
-# 5. ปิดและหยุดระบบทั้งหมด
-docker compose down`
-  },
-  {
-    id: 'server-code-full-script',
-    title: 'Server: 4. Complete Server Setup (67.txt)',
-    description: 'Full bundled script: Docker install, GitLab server, and Docker Compose deployment',
-    language: 'bash',
-    category: 'server',
-    practiceType: 'code',
-    code: `# ติดตั้ง Docker อัตโนมัติ
-curl -fsSL https://get.docker.com/ | sh
-
-# ติดตั้ง Docker Compose Plugin
-sudo apt update && sudo apt install -y docker-compose-plugin
-
-# ให้ User ปัจจุบันใช้งาน Docker ได้โดยไม่ต้องพิมพ์ sudo
+#ให้ User ปัจจุบันใช้งาน Docker ได้โดยไม่ต้องพิมพ์ sudo
 sudo usermod -aG docker $USER && newgrp docker
-
-# ติดตั้ง GitLab (Git Server)
+### 2. ติดตั้ง GitLab (Git Server)
+#ใช้คำสั่งนี้รัน GitLab ขึ้นมาบนเซิร์ฟเวอร์:
 docker run -d --name gitlab --restart always \\
   -p 80:80 -p 443:443 -p 22:22 \\
   -v /srv/gitlab/config:/etc/gitlab \\
   -v /srv/gitlab/logs:/var/log/gitlab \\
   -v /srv/gitlab/data:/var/opt/gitlab \\
   gitlab/gitlab-ce:latest
-
-# ดึงรหัสผ่านเริ่มต้นของ root
 docker exec -it gitlab grep 'Password:' /etc/gitlab/initial_root_password
-
 # เข้าไปที่โฟลเดอร์โปรเจกต์
 cd ~/my-project
 
