@@ -15,6 +15,8 @@ import 'prismjs/components/prism-bash';
 import 'prismjs/components/prism-json';
 import 'prismjs/components/prism-css';
 import 'prismjs/components/prism-markup';
+import 'prismjs/components/prism-docker';
+import 'prismjs/components/prism-yaml';
 
 import type { CodeChar, Language } from '../types';
 
@@ -44,6 +46,10 @@ export function getPrismGrammar(lang: Language) {
       return Prism.languages.css;
     case 'html':
       return Prism.languages.markup;
+    case 'dockerfile':
+      return Prism.languages.docker || Prism.languages.bash;
+    case 'yaml':
+      return Prism.languages.yaml || Prism.languages.json;
     default:
       return Prism.languages.javascript || Prism.languages.clike;
   }

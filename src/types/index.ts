@@ -10,7 +10,9 @@ export type Language =
   | 'sql' 
   | 'java' 
   | 'json' 
-  | 'bash';
+  | 'bash'
+  | 'dockerfile'
+  | 'yaml';
 
 export type ThemeId = 
   | 'serika-dark' 

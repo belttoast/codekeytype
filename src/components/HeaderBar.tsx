@@ -58,6 +58,9 @@ const LANGUAGES_FILTER: { id: Language | 'all'; label: string }[] = [
   { id: 'go', label: 'go' },
   { id: 'cpp', label: 'c++' },
   { id: 'sql', label: 'sql' },
+  { id: 'bash', label: 'bash' },
+  { id: 'dockerfile', label: 'docker' },
+  { id: 'yaml', label: 'yaml' },
   { id: 'css', label: 'css' },
 ];
 

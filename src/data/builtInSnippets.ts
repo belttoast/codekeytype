@@ -588,10 +588,11 @@ git push origin main`
   // ==========================================
   {
     id: 'server-setup',
-    title: 'Server: Setup & Deployment (Docker, GitLab, Compose)',
+    title: 'Server: 1. Setup & Deployment (Docker, GitLab, Compose)',
     description: 'Docker install, GitLab CE server, and Docker Compose deployment',
     language: 'bash',
     category: 'server',
+    practiceType: 'commands',
     code: `#ติดตั้ง Docker อัตโนมัติ
 curl -fsSL https://get.docker.com/ | sh
 #ติดตั้ง Docker Compose Plugin
@@ -621,6 +622,139 @@ docker compose logs -f
 
 # ปิดและหยุดระบบทั้งหมด
 docker compose down`
+  },
+  {
+    id: 'server-dockerfile',
+    title: 'Server: 2. Write Dockerfile (Node.js 18 Alpine)',
+    description: 'Competition Dockerfile: Node.js 18 base, dependencies, source copy, port 3000, start CMD',
+    language: 'dockerfile',
+    category: 'server',
+    practiceType: 'code',
+    code: `# 1. เลือก Base Image เป็น Node.js เวอร์ชั่น 18 ตามเกณฑ์การแข่งขัน
+FROM node:18-alpine
+
+# 2. กำหนดโฟลเดอร์ทำงานภายใน Container
+WORKDIR /app
+
+# 3. คัดลอกไฟล์ package.json มาติดตั้ง Dependencies
+COPY package*.json ./
+RUN npm install
+
+# 4. คัดลอกโค้ดทั้งหมดในโปรเจกต์เข้าไป
+COPY . .
+
+# 5. เปิด Port 3000 สำหรับใช้งาน
+EXPOSE 3000
+
+# 6. คำสั่งเปิดรันแอปพลิเคชัน
+CMD ["npm", "run", "start"]`
+  },
+  {
+    id: 'server-docker-compose',
+    title: 'Server: 3. Write docker-compose.yaml (App, DB, Caddy, Registry)',
+    description: 'Full stack compose: Node.js App, MariaDB 10.8, Caddy Reverse Proxy, and Local Registry',
+    language: 'yaml',
+    category: 'server',
+    practiceType: 'code',
+    code: `version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: node_app
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=rootpassword
+      - DB_NAME=competition_db
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: mariadb:10.8
+    container_name: mariadb_db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: competition_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:latest
+    container_name: caddy_proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+  registry:
+    image: registry:2
+    container_name: local_registry
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry_data:/var/lib/registry
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  caddy_data:
+  caddy_config:
+  registry_data:`
+  },
+  {
+    id: 'server-caddyfile',
+    title: 'Server: 4. Write Caddyfile (Reverse Proxy)',
+    description: 'Caddy reverse proxy mapping custom domain app.mydomain.lab to app:3000',
+    language: 'bash',
+    category: 'server',
+    practiceType: 'code',
+    code: `# Caddyfile reverse proxy to app:3000
+app.mydomain.lab {
+    reverse_proxy app:3000
+}`
+  },
+  {
+    id: 'server-ubuntu-docker-install',
+    title: 'Server: 5. Ubuntu Docker Engine & Compose Install',
+    description: 'Ubuntu official Docker Engine install: remove old, dependencies, GPG key, repo, and install',
+    language: 'bash',
+    category: 'server',
+    practiceType: 'commands',
+    code: `# 1. ลบเวอร์ชันเก่า (ถ้ามี)
+sudo apt-get remove -y docker docker-engine docker.io containerd runc
+
+# 2. ติดตั้งเครื่องมือที่จำเป็น
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl gnupg
+
+# 3. เพิ่ม Docker GPG Key
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+# 4. เพิ่ม Docker Repository ลงใน Ubuntu
+echo \\
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \\
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \\
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# 5. ติดตั้ง Docker Engine และ Compose Plugin
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+# เพิ่ม User เข้ากลุ่ม docker
+sudo usermod -aG docker $USER`
   },
 
   // --- JAVASCRIPT / TYPESCRIPT ---
