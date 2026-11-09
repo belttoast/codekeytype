@@ -16,6 +16,172 @@ interface TypingAreaProps {
   onRestart: () => void;
 }
 
+interface LineViewProps {
+  lineChars: CodeChar[];
+  lineIdx: number;
+  isActiveLine: boolean;
+  isThisLineFlashing: boolean;
+  showLineNumbers: boolean;
+  cursorIndex: number;
+  charStates: CharStatus[];
+  extraCharsMap: Record<number, string>;
+  spawnedCloseIndices: Set<number>;
+  semiBlindMask: Set<number>;
+  settings: UserSettings;
+  activeCharRef: React.RefObject<HTMLSpanElement | null>;
+}
+
+const LineView = React.memo<LineViewProps>(
+  ({
+    lineChars,
+    lineIdx,
+    isThisLineFlashing,
+    showLineNumbers,
+    cursorIndex,
+    charStates,
+    extraCharsMap,
+    spawnedCloseIndices,
+    semiBlindMask,
+    settings,
+    activeCharRef,
+  }) => {
+    return (
+      <div 
+        className={`flex items-start group ${
+          isThisLineFlashing ? 'bg-theme-accent/5 rounded-lg px-1 -mx-1' : ''
+        }`}
+      >
+        {showLineNumbers && (
+          <span className="w-10 shrink-0 text-right pr-4 text-theme-dim select-none font-mono text-xs opacity-60 group-hover:opacity-100 transition-opacity pt-0.5">
+            {lineIdx + 1}
+          </span>
+        )}
+
+        <div className="flex-1 whitespace-pre flex flex-wrap items-center">
+          {lineChars.map((codeChar) => {
+            const globalIdx = codeChar.globalIndex;
+            const isCurrent = globalIdx === cursorIndex;
+            const charState = charStates[globalIdx];
+            const extra = extraCharsMap[globalIdx];
+            const isSpawnedPair = spawnedCloseIndices.has(globalIdx);
+
+            // --- BLIND MODE VISIBILITY ---
+            let isCharHidden = false;
+            let showMaskPlaceholder = false;
+
+            if (charState === 'untouched') {
+              if (settings.blindModeType === 'fully-blind') {
+                if (codeChar.tokenType !== 'comment') {
+                  isCharHidden = true;
+                }
+              } else if (settings.blindModeType === 'blind') {
+                if (!isThisLineFlashing) {
+                  isCharHidden = true;
+                }
+              } else if (settings.blindModeType === 'semi-blind') {
+                if (semiBlindMask.has(globalIdx)) {
+                  isCharHidden = true;
+                  showMaskPlaceholder = true;
+                }
+              }
+            }
+
+            let charColorClass = '';
+            if (charState === 'correct') {
+              charColorClass = `${getTokenColor(codeChar.tokenType)} font-semibold drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]`;
+            } else if (charState === 'incorrect') {
+              charColorClass = 'text-theme-error bg-theme-errorBg font-semibold rounded-xs underline decoration-theme-error decoration-2';
+            } else if (charState === 'skipped') {
+              charColorClass = 'text-theme-dim opacity-40 italic select-none';
+            } else if (isSpawnedPair) {
+              charColorClass = 'text-theme-accent bg-theme-accent/20 ring-1 ring-theme-accent/60 font-bold rounded-xs px-0.5 shadow-[0_0_8px_var(--color-accent)] animate-pulse';
+            } else if (isCharHidden) {
+              charColorClass = showMaskPlaceholder 
+                ? 'opacity-0 border-b border-theme-border/40' 
+                : 'opacity-0 select-none';
+            } else if (codeChar.tokenType === 'comment') {
+              charColorClass = 'text-[var(--syntax-comment)] opacity-70 italic font-normal';
+            } else {
+              charColorClass = 'text-theme-sub/65 font-normal';
+            }
+
+            if (codeChar.char === '\n') {
+              return (
+                <React.Fragment key={globalIdx}>
+                  {extra && (
+                    <span className="text-theme-error bg-theme-errorBg font-bold px-0.5 rounded">
+                      {extra}
+                    </span>
+                  )}
+                  <span
+                    ref={isCurrent ? activeCharRef : null}
+                    className={`inline-block text-xs font-mono select-none px-1 rounded ${
+                      charState === 'correct' 
+                        ? 'text-theme-accent/80 font-bold' 
+                        : charState === 'incorrect' 
+                        ? 'text-theme-error bg-theme-errorBg' 
+                        : charState === 'skipped'
+                        ? 'opacity-25'
+                        : isCharHidden
+                        ? 'opacity-0'
+                        : 'text-theme-sub/40'
+                    }`}
+                    title="Enter (↵)"
+                  >
+                    ↵
+                  </span>
+                </React.Fragment>
+              );
+            }
+
+            const isSpace = codeChar.char === ' ';
+            const displayChar = isSpace ? (charState === 'incorrect' ? '·' : ' ') : codeChar.char;
+
+            return (
+              <React.Fragment key={globalIdx}>
+                <span
+                  ref={isCurrent ? activeCharRef : null}
+                  className={`relative inline-block ${charColorClass} ${
+                    isSpace && charState === 'incorrect' ? 'text-theme-error bg-theme-errorBg px-0.5' : ''
+                  }`}
+                >
+                  {displayChar}
+                </span>
+
+                {extra && (
+                  <span className="text-theme-error bg-theme-errorBg font-bold px-0.5 rounded">
+                    {extra}
+                  </span>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+    );
+  },
+  (prev, next) => {
+    if (prev.isActiveLine !== next.isActiveLine) return false;
+    if (next.isActiveLine) return false;
+    if (prev.isThisLineFlashing !== next.isThisLineFlashing) return false;
+    if (prev.showLineNumbers !== next.showLineNumbers) return false;
+    if (prev.settings !== next.settings) return false;
+    if (prev.lineChars !== next.lineChars) return false;
+
+    const first = prev.lineChars[0]?.globalIndex;
+    const last = prev.lineChars[prev.lineChars.length - 1]?.globalIndex;
+    if (first !== undefined && last !== undefined) {
+      for (let i = first; i <= last; i++) {
+        if (prev.charStates[i] !== next.charStates[i]) return false;
+        if (prev.extraCharsMap[i] !== next.extraCharsMap[i]) return false;
+        if (prev.spawnedCloseIndices.has(i) !== next.spawnedCloseIndices.has(i)) return false;
+      }
+    }
+
+    return true;
+  }
+);
+
 export const TypingArea: React.FC<TypingAreaProps> = ({
   targetChars,
   charStates,
@@ -149,34 +315,41 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
     };
   }, []);
 
-  // Update caret coordinates
+  // Update caret coordinates & bounds-clamped instant scrolling
+  const updateCaret = useCallback(() => {
+    if (!activeCharRef.current || !containerRef.current) return;
+
+    const container = containerRef.current;
+    const containerRect = container.getBoundingClientRect();
+    const charRect = activeCharRef.current.getBoundingClientRect();
+
+    setCaretPos({
+      top: charRect.top - containerRect.top + container.scrollTop,
+      left: charRect.left - containerRect.left + container.scrollLeft,
+      height: charRect.height,
+      width: charRect.width || 10,
+    });
+
+    // Instant scrolling adjustment when approaching boundaries, avoiding smooth-scroll queue lag
+    const relativeTop = charRect.top - containerRect.top;
+    const containerHeight = container.clientHeight;
+
+    if (relativeTop > containerHeight - 110) {
+      container.scrollTop += (relativeTop - (containerHeight - 110));
+    } else if (relativeTop < 60) {
+      container.scrollTop = Math.max(0, container.scrollTop - (60 - relativeTop));
+    }
+  }, []);
+
   useEffect(() => {
-    const updateCaret = () => {
-      if (!activeCharRef.current || !containerRef.current) return;
-
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const charRect = activeCharRef.current.getBoundingClientRect();
-
-      setCaretPos({
-        top: charRect.top - containerRect.top + containerRef.current.scrollTop,
-        left: charRect.left - containerRect.left + containerRef.current.scrollLeft,
-        height: charRect.height,
-        width: charRect.width || 10,
-      });
-
-      const targetScroll = (charRect.top - containerRect.top + containerRef.current.scrollTop) - 100;
-      if (Math.abs(containerRef.current.scrollTop - targetScroll) > 120) {
-        containerRef.current.scrollTo({
-          top: Math.max(0, targetScroll),
-          behavior: 'smooth',
-        });
-      }
-    };
-
     updateCaret();
+  }, [cursorIndex, targetChars, updateCaret]);
+
+  // Window resize handler attached once on mount
+  useEffect(() => {
     window.addEventListener('resize', updateCaret);
     return () => window.removeEventListener('resize', updateCaret);
-  }, [cursorIndex, targetChars]);
+  }, [updateCaret]);
 
   useEffect(() => {
     const handleWindowClick = () => setIsFocused(true);
@@ -195,7 +368,7 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
   const t = useTranslation(settings.uiLanguage);
 
   return (
-    <div className="relative w-full max-w-5xl mx-auto my-auto flex flex-col items-center">
+    <div className="relative w-full max-w-[1440px] 2xl:max-w-[1600px] mx-auto my-auto flex flex-col items-center px-2 sm:px-4">
       {/* Top Banner: Status & Blind Mode indicators */}
       <div className="flex items-center gap-3 mb-2 min-h-[28px]">
         {capsLockActive && (
@@ -262,7 +435,7 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
       <div
         ref={containerRef}
         onClick={() => setIsFocused(true)}
-        className="relative w-full max-h-[58vh] overflow-y-auto rounded-2xl bg-theme-surface/75 border border-theme-border/80 shadow-2xl p-6 md:p-8 select-none transition-all cursor-text focus:outline-none"
+        className="relative w-full max-h-[62vh] overflow-y-auto rounded-2xl bg-theme-surface/75 border border-theme-border/80 shadow-2xl p-6 md:p-8 select-none transition-colors cursor-text focus:outline-none"
         style={{
           fontFamily: settings.fontFamily,
           fontSize: `${settings.fontSize}px`,
@@ -310,126 +483,28 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
             const isThisLineFlashing = settings.blindModeType === 'blind' && isCurrentLine && isLineFlashing;
 
             return (
-              <div 
-                key={lineIdx} 
-                className={`flex items-start group transition-opacity duration-300 ${
-                  isThisLineFlashing ? 'bg-theme-accent/5 rounded-lg px-1 -mx-1' : ''
-                }`}
-              >
-                {settings.showLineNumbers && (
-                  <span className="w-10 shrink-0 text-right pr-4 text-theme-dim select-none font-mono text-xs opacity-60 group-hover:opacity-100 transition-opacity pt-0.5">
-                    {lineIdx + 1}
-                  </span>
-                )}
-
-                <div className="flex-1 whitespace-pre flex flex-wrap items-center">
-                  {lineChars.map((codeChar) => {
-                    const globalIdx = codeChar.globalIndex;
-                    const isCurrent = globalIdx === cursorIndex;
-                    const charState = charStates[globalIdx];
-                    const extra = extraCharsMap[globalIdx];
-                    const isSpawnedPair = spawnedCloseIndices.has(globalIdx);
-
-                    // --- BLIND MODE VISIBILITY ---
-                    let isCharHidden = false;
-                    let showMaskPlaceholder = false;
-
-                    if (charState === 'untouched') {
-                      if (settings.blindModeType === 'fully-blind') {
-                        if (codeChar.tokenType !== 'comment') {
-                          isCharHidden = true;
-                        }
-                      } else if (settings.blindModeType === 'blind') {
-                        if (!isThisLineFlashing) {
-                          isCharHidden = true;
-                        }
-                      } else if (settings.blindModeType === 'semi-blind') {
-                        if (semiBlindMask.has(globalIdx)) {
-                          isCharHidden = true;
-                          showMaskPlaceholder = true;
-                        }
-                      }
-                    }
-
-                    let charColorClass = '';
-                    if (charState === 'correct') {
-                      charColorClass = `${getTokenColor(codeChar.tokenType)} font-semibold drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]`;
-                    } else if (charState === 'incorrect') {
-                      charColorClass = 'text-theme-error bg-theme-errorBg font-semibold rounded-xs underline decoration-theme-error decoration-2';
-                    } else if (charState === 'skipped') {
-                      charColorClass = 'text-theme-dim opacity-40 italic select-none';
-                    } else if (isSpawnedPair) {
-                      charColorClass = 'text-theme-accent bg-theme-accent/20 ring-1 ring-theme-accent/60 font-bold rounded-xs px-0.5 shadow-[0_0_8px_var(--color-accent)] animate-pulse';
-                    } else if (isCharHidden) {
-                      charColorClass = showMaskPlaceholder 
-                        ? 'opacity-0 border-b border-theme-border/40' 
-                        : 'opacity-0 select-none';
-                    } else if (codeChar.tokenType === 'comment') {
-                      charColorClass = 'text-[var(--syntax-comment)] opacity-70 italic font-normal';
-                    } else {
-                      charColorClass = 'text-theme-sub/65 font-normal';
-                    }
-
-                    if (codeChar.char === '\n') {
-                      return (
-                        <React.Fragment key={globalIdx}>
-                          {extra && (
-                            <span className="text-theme-error bg-theme-errorBg font-bold px-0.5 rounded">
-                              {extra}
-                            </span>
-                          )}
-                          <span
-                            ref={isCurrent ? activeCharRef : null}
-                            className={`inline-block text-xs font-mono select-none px-1 rounded transition-colors ${
-                              charState === 'correct' 
-                                ? 'text-theme-accent/80 font-bold' 
-                                : charState === 'incorrect' 
-                                ? 'text-theme-error bg-theme-errorBg' 
-                                : charState === 'skipped'
-                                ? 'opacity-25'
-                                : isCharHidden
-                                ? 'opacity-0'
-                                : 'text-theme-sub/40'
-                            }`}
-                            title="Enter (↵)"
-                          >
-                            ↵
-                          </span>
-                        </React.Fragment>
-                      );
-                    }
-
-                    const isSpace = codeChar.char === ' ';
-                    const displayChar = isSpace ? (charState === 'incorrect' ? '·' : ' ') : codeChar.char;
-
-                    return (
-                      <React.Fragment key={globalIdx}>
-                        <span
-                          ref={isCurrent ? activeCharRef : null}
-                          className={`relative inline-block transition-all duration-100 ${charColorClass} ${
-                            isSpace && charState === 'incorrect' ? 'text-theme-error bg-theme-errorBg px-0.5' : ''
-                          } ${isCurrent ? 'scale-[1.05]' : ''}`}
-                        >
-                          {displayChar}
-                        </span>
-
-                        {extra && (
-                          <span className="text-theme-error bg-theme-errorBg font-bold px-0.5 rounded">
-                            {extra}
-                          </span>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
-              </div>
+              <LineView
+                key={lineIdx}
+                lineChars={lineChars}
+                lineIdx={lineIdx}
+                isActiveLine={isCurrentLine}
+                isThisLineFlashing={isThisLineFlashing}
+                showLineNumbers={settings.showLineNumbers}
+                cursorIndex={cursorIndex}
+                charStates={charStates}
+                extraCharsMap={extraCharsMap}
+                spawnedCloseIndices={spawnedCloseIndices}
+                semiBlindMask={semiBlindMask}
+                settings={settings}
+                activeCharRef={activeCharRef}
+              />
             );
           })}
         </div>
       </div>
 
       {/* Footer controls & hints */}
-      <div className="flex items-center justify-between w-full max-w-5xl px-3 pt-3 text-xs text-theme-sub font-mono">
+      <div className="flex items-center justify-between w-full max-w-[1440px] 2xl:max-w-[1600px] px-3 pt-3 text-xs text-theme-sub font-mono">
         <div className="flex items-center gap-2">
           <span>Restart:</span>
           <kbd className="px-1.5 py-0.5 rounded bg-theme-surface border border-theme-border text-[11px] text-theme-main">

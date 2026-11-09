@@ -611,8 +611,13 @@ export function useTypingEngine({
   // Calculate live metrics
   const liveMetrics = useMemo(() => {
     const elapsedMinutes = elapsedTime / 60;
-    const correctCount = charStates.filter(s => s === 'correct').length;
-    const incorrectCount = charStates.filter(s => s === 'incorrect').length;
+    let correctCount = 0;
+    let incorrectCount = 0;
+    for (let i = 0; i < charStates.length; i++) {
+      const s = charStates[i];
+      if (s === 'correct') correctCount++;
+      else if (s === 'incorrect') incorrectCount++;
+    }
     const totalTyped = totalKeypresses || (correctCount + incorrectCount);
 
     const wpm = elapsedMinutes > 0 ? Math.max(0, Math.round((correctCount / 5) / elapsedMinutes)) : 0;

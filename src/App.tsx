@@ -306,7 +306,7 @@ export function App() {
         )}
       </main>
 
-      <footer className="w-full max-w-5xl mx-auto py-4 text-xs text-theme-sub flex flex-wrap items-center justify-between gap-4 font-mono border-t border-theme-border/40 select-none">
+      <footer className="w-full max-w-[1440px] 2xl:max-w-[1600px] mx-auto py-4 text-xs text-theme-sub flex flex-wrap items-center justify-between gap-4 font-mono border-t border-theme-border/40 select-none px-2 sm:px-4">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5">
             <kbd className="px-1.5 py-0.5 rounded bg-theme-surface border border-theme-border text-theme-main text-[11px]">

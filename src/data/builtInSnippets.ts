@@ -11,17 +11,20 @@ export const BUILT_IN_SNIPPETS: Snippet[] = [
     language: 'bash',
     category: 'backend',
     practiceType: 'commands',
-    code: `# 1. Import database into MariaDB
+    code: `# 1. Set MariaDB path if not recognized in PATH
+set PATH=%PATH%;C:\\Program Files\\MariaDB 13.0\\bin
+
+# 2. Import database schema into MariaDB
 mariadb -u root < database.sql
 
-# 2. Setup backend folder & install 5 dependencies
+# 3. Create backend folder and install dependencies
 mkdir backend
 cd backend
 npm init -y
 npm install express cors mysql2 jsonwebtoken multer
 mkdir uploads
 
-# 3. Start backend server
+# 4. Start backend server
 node server.js`
   },
   {
@@ -86,6 +89,8 @@ const auth = (req, res, next) => {
   }
 };
 
+// 1. Login ออก JWT (POST /api/login | Body: {"username":"emp1","password":"1234"})
+// 200 OK: { status: 200, message: "เข้าสู่ระบบสำเร็จ", data: { token: "...", user: {...} } }
 app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body || {};
@@ -98,10 +103,14 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// 2. อัปโหลดไฟล์ (POST /api/upload | Form-Data: file=<เลือกไฟล์> | Header: Authorization Bearer <TOKEN>)
+// 200 OK: { status: 200, message: "อัปโหลดสำเร็จ", data: { url: "filename.png" } }
 app.post('/api/upload', auth, upload.single('file'), (req, res) => {
   req.file ? send(res, 200, 'อัปโหลดสำเร็จ', { url: req.file.filename }) : send(res, 400, 'ไม่พบไฟล์');
 });
 
+// 3. Dashboard ค้นหา + แบ่งหน้า (GET /api/dashboard?search=&page=1 | Header: Authorization Bearer <TOKEN>)
+// 200 OK: { status: 200, message: "สำเร็จ", data: { items: [...], totalPages: 2 } }
 app.get('/api/dashboard', auth, async (req, res) => {
   try {
     const { search = '', page = 1 } = req.query;
@@ -118,6 +127,8 @@ app.get('/api/dashboard', auth, async (req, res) => {
   }
 });
 
+// 4. รายการรอประเมิน (GET /api/pending/boss หรือ /api/pending/director | Header: Authorization Bearer <TOKEN>)
+// 200 OK: { status: 200, message: "สำเร็จ", data: [ { id: 2, name: "...", emp_score: 80, file_url: null } ] }
 app.get('/api/pending/:role', auth, async (req, res) => {
   try {
     const sql = req.params.role === 'boss'
@@ -130,6 +141,8 @@ app.get('/api/pending/:role', auth, async (req, res) => {
   }
 });
 
+// 5. บันทึกผลคะแนน (POST /api/evaluate | Body: {"id":1,"role":"employee","score":85,"file_url":"..."} | Header: Authorization Bearer <TOKEN>)
+// 200 OK: { status: 200, message: "บันทึกคะแนนเรียบร้อย", data: null }
 app.post('/api/evaluate', auth, async (req, res) => {
   try {
     const { id, role, score, file_url } = req.body || {};
@@ -141,6 +154,8 @@ app.post('/api/evaluate', auth, async (req, res) => {
   }
 });
 
+// 6. แก้ไขข้อมูลและไฟล์แนบ (PUT /api/evaluate/1 | Body: {"score":90,"file_url":"..."} | Header: Authorization Bearer <TOKEN>)
+// 200 OK: { status: 200, message: "แก้ไขข้อมูลเรียบร้อย", data: null }
 app.put('/api/evaluate/:id', auth, async (req, res) => {
   try {
     const { score, file_url } = req.body || {};
@@ -151,6 +166,8 @@ app.put('/api/evaluate/:id', auth, async (req, res) => {
   }
 });
 
+// 7. ลบข้อมูลคะแนน (DELETE /api/evaluate/1 | Header: Authorization Bearer <TOKEN>)
+// 200 OK: { status: 200, message: "ลบข้อมูลเรียบร้อย", data: null }
 app.delete('/api/evaluate/:id', auth, async (req, res) => {
   try {
     await db.query('UPDATE users SET emp_score = NULL, boss_score = NULL, dir_score = NULL, file_url = NULL WHERE id = ?', [req.params.id]);
@@ -160,6 +177,8 @@ app.delete('/api/evaluate/:id', auth, async (req, res) => {
   }
 });
 
+// 8. Export CSV (GET /api/export | Header: Authorization Bearer <TOKEN>)
+// 200 OK: { status: 200, message: "สำเร็จ", data: [ { id: 1, name: "...", emp_score: 89, avg_score: 96.33 } ] }
 app.get('/api/export', auth, async (req, res) => {
   const [rows] = await db.query(\`
     SELECT id, name, emp_score, boss_score, dir_score,
@@ -169,6 +188,8 @@ app.get('/api/export', auth, async (req, res) => {
   send(res, 200, 'สำเร็จ', rows);
 });
 
+// 9. Import CSV (POST /api/import | Body: {"csv":"id,name,emp,boss,dir\\n1,สมชาย,90,90,90"} | Header: Authorization Bearer <TOKEN>)
+// 200 OK: { status: 200, message: "นำเข้าสำเร็จ", data: null }
 app.post('/api/import', auth, async (req, res) => {
   try {
     const lines = (req.body.csv || '').trim().split('\\n').slice(1);
@@ -187,23 +208,151 @@ app.post('/api/import', auth, async (req, res) => {
 app.listen(5000, () => console.log('Server running on port 5000'));`
   },
   {
+    id: 'backend-postman-practice',
+    title: 'Backend: 4. Postman API Testing',
+    description: 'Postman methods, URLs, headers, request bodies, and expected 200 OK responses',
+    language: 'javascript',
+    category: 'backend',
+    practiceType: 'code',
+    code: `// ==========================================
+// --- POSTMAN API TESTING (9 ROUTES) ---
+// ==========================================
+
+// --- 1. Login (POST /api/login) ---
+// Method: POST
+// URL: http://localhost:5000/api/login
+// Header: Content-Type: application/json
+{
+  "username": "emp1",
+  "password": "1234"
+}
+// Expected Result (200 OK):
+// { "status": 200, "message": "เข้าสู่ระบบสำเร็จ", "data": { "token": "...", "user": { "id": 1, "name": "สมชาย ใจดี", "role": "employee" } } }
+
+// --- 2. Upload File (POST /api/upload) ---
+// Method: POST
+// URL: http://localhost:5000/api/upload
+// Header: Authorization: Bearer <TOKEN>
+// Body (form-data): key = file (File)
+// Expected Result (200 OK):
+// { "status": 200, "message": "อัปโหลดสำเร็จ", "data": { "url": "abc123xyz.png" } }
+
+// --- 3. Dashboard (GET /api/dashboard) ---
+// Method: GET
+// URL: http://localhost:5000/api/dashboard?search=&page=1
+// Header: Authorization: Bearer <TOKEN>
+// Expected Result (200 OK):
+// { "status": 200, "message": "สำเร็จ", "data": { "items": [{ "id": 1, "name": "สมชาย ใจดี", "emp_score": 89, "boss_score": 100, "dir_score": 100, "avg_score": 96.33 }], "totalPages": 2 } }
+
+// --- 4. Pending Evaluations (GET /api/pending/:role) ---
+// Method: GET
+// URL: http://localhost:5000/api/pending/boss
+// Header: Authorization: Bearer <TOKEN>
+// Expected Result (200 OK):
+// { "status": 200, "message": "สำเร็จ", "data": [{ "id": 2, "name": "สมหญิง สดใส", "emp_score": 80, "file_url": null }] }
+
+// --- 5. Save Score (POST /api/evaluate) ---
+// Method: POST
+// URL: http://localhost:5000/api/evaluate
+// Headers: Authorization: Bearer <TOKEN> | Content-Type: application/json
+{
+  "id": 1,
+  "role": "employee",
+  "score": 85,
+  "file_url": "abc123xyz.png"
+}
+// Expected Result (200 OK):
+// { "status": 200, "message": "บันทึกคะแนนเรียบร้อย", "data": null }
+
+// --- 6. Edit Score (PUT /api/evaluate/:id) ---
+// Method: PUT
+// URL: http://localhost:5000/api/evaluate/1
+// Headers: Authorization: Bearer <TOKEN> | Content-Type: application/json
+{
+  "score": 90,
+  "file_url": "updated.png"
+}
+// Expected Result (200 OK):
+// { "status": 200, "message": "แก้ไขข้อมูลเรียบร้อย", "data": null }
+
+// --- 7. Delete Score (DELETE /api/evaluate/:id) ---
+// Method: DELETE
+// URL: http://localhost:5000/api/evaluate/1
+// Header: Authorization: Bearer <TOKEN>
+// Expected Result (200 OK):
+// { "status": 200, "message": "ลบข้อมูลเรียบร้อย", "data": null }
+
+// --- 8. Export CSV (GET /api/export) ---
+// Method: GET
+// URL: http://localhost:5000/api/export
+// Header: Authorization: Bearer <TOKEN>
+// Expected Result (200 OK):
+// { "status": 200, "message": "สำเร็จ", "data": [{ "id": 1, "name": "สมชาย ใจดี", "emp_score": 89, "boss_score": 100, "dir_score": 100, "avg_score": 96.33 }] }
+
+// --- 9. Import CSV (POST /api/import) ---
+// Method: POST
+// URL: http://localhost:5000/api/import
+// Headers: Authorization: Bearer <TOKEN> | Content-Type: application/json
+{
+  "csv": "id,name,emp_score,boss_score,dir_score\\n1,สมชาย ใจดี,95,95,95"
+}
+// Expected Result (200 OK):
+// { "status": 200, "message": "นำเข้าสำเร็จ", "data": null }`
+  },
+  {
     id: 'backend-git-push',
-    title: 'Backend: 4. Push to Git',
-    description: 'Git workflow: create .gitignore, stage, commit, and push backend',
+    title: 'Backend: 5. Push to Git',
+    description: 'Git workflow: .gitignore, init, add, commit, branch, remote, and push',
     language: 'bash',
     category: 'backend',
     practiceType: 'git',
-    code: `# Create .gitignore to ignore heavy files
-echo "node_modules\\n.next\\nuploads" > .gitignore
+    code: `# 1. Create .gitignore for heavy folders
+echo node_modules > .gitignore
+echo uploads >> .gitignore
 
-# Stage all files
+# 2. Initialize Git repository
+git init
+
+# 3. Stage all files
 git add .
 
-# Commit backend implementation
-git commit -m "feat(backend): complete database schema and express api"
+# 4. Commit backend implementation
+git commit -m "feat(backend): complete api and database"
 
-# Push to remote GitLab repository
-git push origin main`
+# 5. Connect to remote repository
+git remote add origin https://github.com/username/repo.git
+
+# 6. Set main branch and push
+git branch -M main
+git push -u origin main`
+  },
+  {
+    id: 'backend-commands-all',
+    title: 'Backend: 6. All Terminal Commands',
+    description: 'Complete backend command flow: MariaDB, npm install, run, and Git push',
+    language: 'bash',
+    category: 'backend',
+    practiceType: 'commands',
+    code: `# === 1. DATABASE & SERVER SETUP ===
+set PATH=%PATH%;C:\\Program Files\\MariaDB 13.0\\bin
+mariadb -u root < database.sql
+mkdir backend
+cd backend
+npm init -y
+npm install express cors mysql2 jsonwebtoken multer
+mkdir uploads
+node server.js
+
+# === 2. GIT WORKFLOW (RUN FROM PROJECT ROOT) ===
+cd ..
+echo node_modules > .gitignore
+echo uploads >> .gitignore
+git init
+git add .
+git commit -m "feat(backend): complete api and database"
+git remote add origin https://github.com/username/repo.git
+git branch -M main
+git push -u origin main`
   },
 
   // ==========================================
@@ -567,19 +716,39 @@ export default function Home() {
     language: 'bash',
     category: 'frontend',
     practiceType: 'git',
-    code: `# Pull latest updates from backend teammate
+    code: `# 1. Pull latest updates from backend teammate
 git pull origin main
 
-# Check git status
+# 2. Check git status
 git status
 
-# Stage frontend code
+# 3. Stage frontend code
 git add frontend/
 
-# Commit frontend changes
+# 4. Commit frontend changes
 git commit -m "feat(frontend): complete evaluation UI and dashboard"
 
-# Push to remote repository
+# 5. Push to remote repository
+git push origin main`
+  },
+  {
+    id: 'frontend-commands-all',
+    title: 'Frontend: 5. All Terminal Commands',
+    description: 'Complete frontend command flow: create Next.js, dev server, and Git push',
+    language: 'bash',
+    category: 'frontend',
+    practiceType: 'commands',
+    code: `# === 1. INITIALIZE NEXT.JS & RUN DEV ===
+npx create-next-app@latest frontend --typescript --tailwind --eslint=false --app --src-dir=false --use-npm --yes
+cd frontend
+npm run dev
+
+# === 2. GIT WORKFLOW (RUN FROM PROJECT ROOT) ===
+cd ..
+git pull origin main
+git status
+git add frontend/
+git commit -m "feat(frontend): complete evaluation UI and dashboard"
 git push origin main`
   },
 
