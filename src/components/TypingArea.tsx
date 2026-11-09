@@ -505,16 +505,9 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
 
       {/* Footer controls & hints */}
       <div className="flex items-center justify-between w-full max-w-[1440px] 2xl:max-w-[1600px] px-3 pt-3 text-xs text-theme-sub font-mono">
-        <div className="flex items-center gap-2">
-          <span>Restart:</span>
-          <kbd className="px-1.5 py-0.5 rounded bg-theme-surface border border-theme-border text-[11px] text-theme-main">
-            Esc
-          </kbd>
-        </div>
-
         <button
           onClick={onRestart}
-          className="flex items-center gap-1.5 hover:text-theme-accent transition-colors"
+          className="flex items-center gap-1.5 hover:text-theme-accent transition-colors cursor-pointer"
           title="Restart Test"
         >
           <RotateCcw className="w-3.5 h-3.5" />

@@ -245,8 +245,6 @@ export function useTypingEngine({
   // Handle keydown input
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
-      e.preventDefault();
-      resetTest();
       return;
     }
 
@@ -600,7 +598,7 @@ export function useTypingEngine({
         }
       }
     }
-  }, [resetTest, handleTestComplete]);
+  }, [handleTestComplete]);
 
   // Global key listener
   useEffect(() => {

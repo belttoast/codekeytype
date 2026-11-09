@@ -198,25 +198,6 @@ export function App() {
     return () => window.removeEventListener('paste', handleGlobalPaste);
   }, []);
 
-  // Global restart on Tab + Enter
-  useEffect(() => {
-    let tabPressed = false;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Tab') {
-        tabPressed = true;
-      } else if (e.key === 'Enter' && tabPressed) {
-        e.preventDefault();
-        handleRestart();
-        tabPressed = false;
-      } else {
-        tabPressed = false;
-      }
-    };
-
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [handleRestart]);
-
   return (
     <div className="min-h-screen flex flex-col justify-between px-4 sm:px-8 py-2 md:py-4 transition-colors">
       <HeaderBar
@@ -313,20 +294,6 @@ export function App() {
               Ctrl+V
             </kbd>
             <span>paste code preset</span>
-          </span>
-          <span className="text-theme-dim">•</span>
-          <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 rounded bg-theme-surface border border-theme-border text-theme-main text-[11px]">
-              Tab+Enter
-            </kbd>
-            <span>restart</span>
-          </span>
-          <span className="text-theme-dim">•</span>
-          <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 rounded bg-theme-surface border border-theme-border text-theme-main text-[11px]">
-              Esc
-            </kbd>
-            <span>reset</span>
           </span>
         </div>
 

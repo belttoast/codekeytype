@@ -187,13 +187,10 @@ Time: ${result.timeSeconds}s`;
       <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
         <button
           onClick={onRestart}
-          className="px-6 py-3 rounded-xl bg-theme-surface hover:bg-theme-card border border-theme-border text-theme-main font-medium text-sm flex items-center gap-2.5 transition-all shadow-sm group"
+          className="px-6 py-3 rounded-xl bg-theme-surface hover:bg-theme-card border border-theme-border text-theme-main font-medium text-sm flex items-center gap-2.5 transition-all shadow-sm group cursor-pointer"
         >
           <RotateCcw className="w-4 h-4 text-theme-accent group-hover:-rotate-90 transition-transform duration-200" />
           <span>{t.restartTest}</span>
-          <kbd className="text-[11px] font-mono px-2 py-0.5 rounded bg-theme-bg text-theme-sub border border-theme-border">
-            Tab + Enter
-          </kbd>
         </button>
 
         <button
