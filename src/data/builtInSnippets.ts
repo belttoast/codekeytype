@@ -219,8 +219,8 @@ app.listen(5000, () => console.log('Server running on port 5000'));`
 // ==========================================
 
 // --- 1. Login (POST /api/login) ---
-// Method: POST
-// URL: http://localhost:5000/api/login
+Method: POST
+URL: http://localhost:5000/api/login
 // Header: Content-Type: application/json
 {
   "username": "emp1",
@@ -230,30 +230,30 @@ app.listen(5000, () => console.log('Server running on port 5000'));`
 // { "status": 200, "message": "เข้าสู่ระบบสำเร็จ", "data": { "token": "...", "user": { "id": 1, "name": "สมชาย ใจดี", "role": "employee" } } }
 
 // --- 2. Upload File (POST /api/upload) ---
-// Method: POST
-// URL: http://localhost:5000/api/upload
+Method: POST
+URL: http://localhost:5000/api/upload
 // Header: Authorization: Bearer <TOKEN>
 // Body (form-data): key = file (File)
 // Expected Result (200 OK):
 // { "status": 200, "message": "อัปโหลดสำเร็จ", "data": { "url": "abc123xyz.png" } }
 
 // --- 3. Dashboard (GET /api/dashboard) ---
-// Method: GET
-// URL: http://localhost:5000/api/dashboard?search=&page=1
+Method: GET
+URL: http://localhost:5000/api/dashboard?search=&page=1
 // Header: Authorization: Bearer <TOKEN>
 // Expected Result (200 OK):
 // { "status": 200, "message": "สำเร็จ", "data": { "items": [{ "id": 1, "name": "สมชาย ใจดี", "emp_score": 89, "boss_score": 100, "dir_score": 100, "avg_score": 96.33 }], "totalPages": 2 } }
 
 // --- 4. Pending Evaluations (GET /api/pending/:role) ---
-// Method: GET
-// URL: http://localhost:5000/api/pending/boss
+Method: GET
+URL: http://localhost:5000/api/pending/boss
 // Header: Authorization: Bearer <TOKEN>
 // Expected Result (200 OK):
 // { "status": 200, "message": "สำเร็จ", "data": [{ "id": 2, "name": "สมหญิง สดใส", "emp_score": 80, "file_url": null }] }
 
 // --- 5. Save Score (POST /api/evaluate) ---
-// Method: POST
-// URL: http://localhost:5000/api/evaluate
+Method: POST
+URL: http://localhost:5000/api/evaluate
 // Headers: Authorization: Bearer <TOKEN> | Content-Type: application/json
 {
   "id": 1,
@@ -265,8 +265,8 @@ app.listen(5000, () => console.log('Server running on port 5000'));`
 // { "status": 200, "message": "บันทึกคะแนนเรียบร้อย", "data": null }
 
 // --- 6. Edit Score (PUT /api/evaluate/:id) ---
-// Method: PUT
-// URL: http://localhost:5000/api/evaluate/1
+Method: PUT
+URL: http://localhost:5000/api/evaluate/1
 // Headers: Authorization: Bearer <TOKEN> | Content-Type: application/json
 {
   "score": 90,
@@ -276,22 +276,22 @@ app.listen(5000, () => console.log('Server running on port 5000'));`
 // { "status": 200, "message": "แก้ไขข้อมูลเรียบร้อย", "data": null }
 
 // --- 7. Delete Score (DELETE /api/evaluate/:id) ---
-// Method: DELETE
-// URL: http://localhost:5000/api/evaluate/1
+Method: DELETE
+URL: http://localhost:5000/api/evaluate/1
 // Header: Authorization: Bearer <TOKEN>
 // Expected Result (200 OK):
 // { "status": 200, "message": "ลบข้อมูลเรียบร้อย", "data": null }
 
 // --- 8. Export CSV (GET /api/export) ---
-// Method: GET
-// URL: http://localhost:5000/api/export
+Method: GET
+URL: http://localhost:5000/api/export
 // Header: Authorization: Bearer <TOKEN>
 // Expected Result (200 OK):
 // { "status": 200, "message": "สำเร็จ", "data": [{ "id": 1, "name": "สมชาย ใจดี", "emp_score": 89, "boss_score": 100, "dir_score": 100, "avg_score": 96.33 }] }
 
 // --- 9. Import CSV (POST /api/import) ---
-// Method: POST
-// URL: http://localhost:5000/api/import
+Method: POST
+URL: http://localhost:5000/api/import
 // Headers: Authorization: Bearer <TOKEN> | Content-Type: application/json
 {
   "csv": "id,name,emp_score,boss_score,dir_score\\n1,สมชาย ใจดี,95,95,95"
