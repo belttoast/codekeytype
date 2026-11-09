@@ -300,36 +300,164 @@ URL: http://localhost:5000/api/import
 // { "status": 200, "message": "นำเข้าสำเร็จ", "data": null }`
   },
   {
+    id: 'backend-code-dashboard-tsx',
+    title: 'Backend: 5. Write app/Dashboard.tsx (Fullstack)',
+    description: 'Fullstack component: executive stats, search, table, pagination, & Excel CSV',
+    language: 'typescript',
+    category: 'backend',
+    practiceType: 'code',
+    code: `'use client';
+
+const UPLOAD_URL = 'http://localhost:5000/uploads';
+
+export default function Dashboard({ user, list, page, setPage, totalPages, search, setSearch, load, req }: any) {
+  // 1. ป้ายสถานะ
+  const getBadge = (e: any) => {
+    if (e.dir_score !== null) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">เสร็จสมบูรณ์</span>;
+    if (e.boss_score !== null) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">รอ ผอ.</span>;
+    if (e.emp_score !== null) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">รอหัวหน้า</span>;
+    return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">รอพนักงาน</span>;
+  };
+
+  // 2. Export CSV
+  const exportCSV = async () => {
+    try {
+      const data = await req('/export');
+      const header = 'id,name,self_score,boss_score,dir_score,avg_score\\n';
+      const rows = data.map((e: any) => \`\${e.id},\${e.name},\${e.emp_score ?? ''},\${e.boss_score ?? ''},\${e.dir_score ?? ''},\${e.avg_score}\`).join('\\n');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob(['\\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' }));
+      a.download = 'evaluations.csv';
+      a.click();
+    } catch (err: any) { alert(err.message); }
+  };
+
+  // 3. Import CSV
+  const importCSV = async (e: any) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      await req('/import', 'POST', { csv: await file.text() });
+      alert('นำเข้าสำเร็จ');
+      e.target.value = '';
+      load();
+    } catch (err: any) { alert(err.message); }
+  };
+
+  return (
+    <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      {/* แถบสรุปสถิติ & เมนูจัดการ */}
+      <div className="p-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-slate-50">
+        <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
+          <div>
+            <h2 className="text-base font-bold text-slate-900">กระดานสรุปผลการประเมิน (Dashboard)</h2>
+            <p className="text-xs text-slate-500 mt-0.5">สูตรคำนวณค่าเฉลี่ย: (ตนเอง + หัวหน้า + ผอ.) / 3</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {user.role !== 'employee' && (
+              <div className="flex gap-2">
+                <button onClick={exportCSV} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium shadow-sm transition">
+                  Export Excel
+                </button>
+                <label className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium shadow-sm cursor-pointer transition">
+                  Import Excel
+                  <input type="file" accept=".csv" onChange={importCSV} className="hidden" />
+                </label>
+              </div>
+            )}
+            <input type="text" placeholder="ค้นหาชื่อพนักงาน..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="border border-slate-300 px-3 py-1.5 rounded-lg text-xs w-44 bg-white" />
+          </div>
+        </div>
+
+        {/* สถิติ 3 ช่อง */}
+        <div className="grid grid-cols-3 gap-3 pt-2 text-center text-xs">
+          <div className="bg-white p-2.5 rounded-lg border border-slate-200"><span className="text-slate-500">รอหัวหน้า</span> <strong className="text-sm text-amber-600 ml-1">{list.filter((x: any) => x.emp_score && !x.boss_score).length}</strong></div>
+          <div className="bg-white p-2.5 rounded-lg border border-slate-200"><span className="text-slate-500">รอ ผอ.</span> <strong className="text-sm text-blue-600 ml-1">{list.filter((x: any) => x.boss_score && !x.dir_score).length}</strong></div>
+          <div className="bg-white p-2.5 rounded-lg border border-slate-200"><span className="text-slate-500">เสร็จสมบูรณ์</span> <strong className="text-sm text-emerald-600 ml-1">{list.filter((x: any) => x.dir_score).length}</strong></div>
+        </div>
+      </div>
+
+      {/* ตัวตารางข้อมูล */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-slate-100/75 border-b border-slate-200 text-xs font-semibold text-slate-700 uppercase tracking-wider">
+            <tr>
+              <th className="py-3 px-4">ชื่อพนักงาน</th>
+              <th className="py-3 px-4 text-center">ตนเอง</th>
+              <th className="py-3 px-4 text-center">หัวหน้า</th>
+              <th className="py-3 px-4 text-center">ผอ.</th>
+              <th className="py-3 px-4 text-center font-bold text-slate-900">คะแนนเฉลี่ย</th>
+              <th className="py-3 px-4 text-center">สถานะ</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {list.length === 0 ? (
+              <tr><td colSpan={6} className="py-8 text-center text-slate-400 text-sm">ไม่พบข้อมูลพนักงาน</td></tr>
+            ) : (
+              list.map((emp: any) => (
+                <tr key={emp.id} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="py-3.5 px-4 font-medium text-slate-800">
+                    {emp.name}
+                    {emp.file_url && <a href={\`\${UPLOAD_URL}/\${emp.file_url}\`} target="_blank" className="ml-2 text-xs text-blue-600 underline font-normal">ไฟล์</a>}
+                  </td>
+                  <td className="py-3.5 px-4 text-center text-slate-600">{emp.emp_score ?? '-'}</td>
+                  <td className="py-3.5 px-4 text-center text-slate-600">{emp.boss_score ?? '-'}</td>
+                  <td className="py-3.5 px-4 text-center text-slate-600">{emp.dir_score ?? '-'}</td>
+                  <td className="py-3.5 px-4 text-center font-bold text-blue-600">
+                    {emp.dir_score !== null ? <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold text-xs border border-blue-100">{emp.avg_score}</span> : '-'}
+                  </td>
+                  <td className="py-3.5 px-4 text-center">{getBadge(emp)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ส่วนแบ่งหน้า (Pagination) */}
+      <div className="flex justify-between items-center px-5 py-3 border-t border-slate-200 bg-slate-50/50 text-xs text-slate-500">
+        <span>แสดงหน้า {page} จากทั้งหมด {totalPages} หน้า</span>
+        <div className="flex gap-2">
+          <button disabled={page <= 1} onClick={() => setPage((p: number) => p - 1)} className="px-3 py-1.5 border border-slate-300 rounded-lg disabled:opacity-40 hover:bg-white transition bg-white text-slate-700 font-medium">
+            &larr; ก่อนหน้า
+          </button>
+          <button disabled={page >= totalPages} onClick={() => setPage((p: number) => p + 1)} className="px-3 py-1.5 border border-slate-300 rounded-lg disabled:opacity-40 hover:bg-white transition bg-white text-slate-700 font-medium">
+            ถัดไป &rarr;
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+`
+  },
+  {
     id: 'backend-git-push',
-    title: 'Backend: 5. Push to Git',
-    description: 'Git workflow: .gitignore, init, add, commit, branch, remote, and push',
+    title: 'Backend: 6. Push to Git',
+    description: 'Git workflow: initial backend push and 2nd push for Dashboard component',
     language: 'bash',
     category: 'backend',
     practiceType: 'git',
-    code: `# 1. Create .gitignore for heavy folders
+    code: `# === 1. INITIAL PUSH (BACKEND & DATABASE) ===
 echo node_modules > .gitignore
 echo uploads >> .gitignore
-
-# 2. Initialize Git repository
 git init
-
-# 3. Stage all files
 git add .
-
-# 4. Commit backend implementation
 git commit -m "feat(backend): complete api and database"
-
-# 5. Connect to remote repository
-git remote add origin https://github.com/username/repo.git
-
-# 6. Set main branch and push
+git remote add origin http://<SERVER_IP>/<GROUP>/<REPO>.git
 git branch -M main
-git push -u origin main`
+git push -u origin main
+
+# === 2. SECOND PUSH (AFTER ADDING DASHBOARD.TSX) ===
+git pull origin main
+git add frontend/app/Dashboard.tsx
+git commit -m "feat(frontend): complete dashboard component"
+git push origin main`
   },
   {
     id: 'backend-commands-all',
-    title: 'Backend: 6. All Terminal Commands',
-    description: 'Complete backend command flow: MariaDB, npm install, run, and Git push',
+    title: 'Backend: 7. All Terminal Commands',
+    description: 'Complete backend command flow: MariaDB, npm install, run, and Git pushes',
     language: 'bash',
     category: 'backend',
     practiceType: 'commands',
@@ -343,16 +471,22 @@ npm install express cors mysql2 jsonwebtoken multer
 mkdir uploads
 node server.js
 
-# === 2. GIT WORKFLOW (RUN FROM PROJECT ROOT) ===
+# === 2. INITIAL GIT PUSH (RUN FROM PROJECT ROOT) ===
 cd ..
 echo node_modules > .gitignore
 echo uploads >> .gitignore
 git init
 git add .
 git commit -m "feat(backend): complete api and database"
-git remote add origin https://github.com/username/repo.git
+git remote add origin http://<SERVER_IP>/<GROUP>/<REPO>.git
 git branch -M main
-git push -u origin main`
+git push -u origin main
+
+# === 3. SECOND PUSH (DASHBOARD COMPONENT) ===
+git pull origin main
+git add frontend/app/Dashboard.tsx
+git commit -m "feat(frontend): complete dashboard component"
+git push origin main`
   },
 
   // ==========================================
@@ -391,14 +525,15 @@ export default nextConfig;`
   },
   {
     id: 'frontend-code-page-tsx',
-    title: 'Frontend: 3. Write app/page.tsx',
-    description: 'Complete frontend: login, employee form, grading, dashboard, & Excel CSV',
+    title: 'Frontend: 3. Write app/page.tsx (Frontend)',
+    description: 'Login, employee form & upload, boss/director grading, and Dashboard integration',
     language: 'typescript',
     category: 'frontend',
     practiceType: 'code',
     code: `'use client';
 
 import { useState, useEffect } from 'react';
+import Dashboard from './Dashboard';
 
 const API = 'http://localhost:5000/api';
 const UPLOAD_URL = 'http://localhost:5000/uploads';
@@ -497,29 +632,6 @@ export default function Home() {
     } catch (err: any) { alert(err.message); }
   };
 
-  const exportCSV = async () => {
-    try {
-      const data = await req('/export');
-      const header = 'id,name,self_score,boss_score,dir_score,avg_score\\n';
-      const rows = data.map((e: any) => \`\${e.id},\${e.name},\${e.emp_score ?? ''},\${e.boss_score ?? ''},\${e.dir_score ?? ''},\${e.avg_score}\`).join('\\n');
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob(['\\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' }));
-      a.download = 'evaluations.csv';
-      a.click();
-    } catch (err: any) { alert(err.message); }
-  };
-
-  const importCSV = async (e: any) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      await req('/import', 'POST', { csv: await file.text() });
-      alert('นำเข้าสำเร็จ');
-      e.target.value = '';
-      load();
-    } catch (err: any) { alert(err.message); }
-  };
-
   if (!user) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
@@ -536,13 +648,6 @@ export default function Home() {
       </main>
     );
   }
-
-  const getBadge = (e: any) => {
-    if (e.dir_score !== null) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">เสร็จสมบูรณ์</span>;
-    if (e.boss_score !== null) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">รอ ผอ.</span>;
-    if (e.emp_score !== null) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">รอหัวหน้า</span>;
-    return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">รอพนักงาน</span>;
-  };
 
   return (
     <div className="min-h-screen bg-slate-50/60 p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
@@ -627,84 +732,8 @@ export default function Home() {
         </section>
       )}
 
-      <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-slate-50">
-          <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-            <div>
-              <h2 className="text-base font-bold text-slate-900">กระดานสรุปผลการประเมิน (Dashboard)</h2>
-              <p className="text-xs text-slate-500 mt-0.5">สูตรคำนวณค่าเฉลี่ย: (ตนเอง + หัวหน้า + ผอ.) / 3</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {user.role !== 'employee' && (
-                <div className="flex gap-2">
-                  <button onClick={exportCSV} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium shadow-sm transition">
-                    Export Excel
-                  </button>
-                  <label className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium shadow-sm cursor-pointer transition">
-                    Import Excel
-                    <input type="file" accept=".csv" onChange={importCSV} className="hidden" />
-                  </label>
-                </div>
-              )}
-              <input type="text" placeholder="ค้นหาชื่อพนักงาน..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="border border-slate-300 px-3 py-1.5 rounded-lg text-xs w-44 bg-white" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3 pt-2 text-center text-xs">
-            <div className="bg-white p-2.5 rounded-lg border border-slate-200"><span className="text-slate-500">รอหัวหน้า</span> <strong className="text-sm text-amber-600 ml-1">{list.filter((x) => x.emp_score && !x.boss_score).length}</strong></div>
-            <div className="bg-white p-2.5 rounded-lg border border-slate-200"><span className="text-slate-500">รอ ผอ.</span> <strong className="text-sm text-blue-600 ml-1">{list.filter((x) => x.boss_score && !x.dir_score).length}</strong></div>
-            <div className="bg-white p-2.5 rounded-lg border border-slate-200"><span className="text-slate-500">เสร็จสมบูรณ์</span> <strong className="text-sm text-emerald-600 ml-1">{list.filter((x) => x.dir_score).length}</strong></div>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-100/75 border-b border-slate-200 text-xs font-semibold text-slate-700 uppercase tracking-wider">
-              <tr>
-                <th className="py-3 px-4">ชื่อพนักงาน</th>
-                <th className="py-3 px-4 text-center">ตนเอง</th>
-                <th className="py-3 px-4 text-center">หัวหน้า</th>
-                <th className="py-3 px-4 text-center">ผอ.</th>
-                <th className="py-3 px-4 text-center font-bold text-slate-900">คะแนนเฉลี่ย</th>
-                <th className="py-3 px-4 text-center">สถานะ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {list.length === 0 ? (
-                <tr><td colSpan={6} className="py-8 text-center text-slate-400 text-sm">ไม่พบข้อมูลพนักงาน</td></tr>
-              ) : (
-                list.map((emp) => (
-                  <tr key={emp.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3.5 px-4 font-medium text-slate-800">
-                      {emp.name}
-                      {emp.file_url && <a href={\`\${UPLOAD_URL}/\${emp.file_url}\`} target="_blank" className="ml-2 text-xs text-blue-600 underline font-normal">ไฟล์</a>}
-                    </td>
-                    <td className="py-3.5 px-4 text-center text-slate-600">{emp.emp_score ?? '-'}</td>
-                    <td className="py-3.5 px-4 text-center text-slate-600">{emp.boss_score ?? '-'}</td>
-                    <td className="py-3.5 px-4 text-center text-slate-600">{emp.dir_score ?? '-'}</td>
-                    <td className="py-3.5 px-4 text-center font-bold text-blue-600">
-                      {emp.dir_score !== null ? <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold text-xs border border-blue-100">{emp.avg_score}</span> : '-'}
-                    </td>
-                    <td className="py-3.5 px-4 text-center">{getBadge(emp)}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex justify-between items-center px-5 py-3 border-t border-slate-200 bg-slate-50/50 text-xs text-slate-500">
-          <span>แสดงหน้า {page} จากทั้งหมด {totalPages} หน้า</span>
-          <div className="flex gap-2">
-            <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="px-3 py-1.5 border border-slate-300 rounded-lg disabled:opacity-40 hover:bg-white transition bg-white text-slate-700 font-medium">
-              &larr; ก่อนหน้า
-            </button>
-            <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="px-3 py-1.5 border border-slate-300 rounded-lg disabled:opacity-40 hover:bg-white transition bg-white text-slate-700 font-medium">
-              ถัดไป &rarr;
-            </button>
-          </div>
-        </div>
-      </section>
+      {/* 3. ตาราง Dashboard สรุปผลคะแนน (Component แยกสำหรับ Fullstack) */}
+      <Dashboard user={user} list={list} page={page} setPage={setPage} totalPages={totalPages} search={search} setSearch={setSearch} load={load} req={req} />
     </div>
   );
 }`
@@ -712,29 +741,26 @@ export default function Home() {
   {
     id: 'frontend-git-push',
     title: 'Frontend: 4. Push to Git',
-    description: 'Git workflow: pull backend updates, stage frontend, commit, and push',
+    description: 'Git workflow: clone/pull backend, push UI, and pull Dashboard component',
     language: 'bash',
     category: 'frontend',
     practiceType: 'git',
-    code: `# 1. Pull latest updates from backend teammate
-git pull origin main
+    code: `# === 1. CLONE BACKEND (OR PULL IF ALREADY INITIALIZED) ===
+git clone http://<SERVER_IP>/<GROUP>/<REPO>.git
+cd <REPO>
 
-# 2. Check git status
-git status
-
-# 3. Stage frontend code
+# === 2. STAGE & PUSH FRONTEND SKELETON ===
 git add frontend/
+git commit -m "feat(frontend): complete evaluation UI"
+git push origin main
 
-# 4. Commit frontend changes
-git commit -m "feat(frontend): complete evaluation UI and dashboard"
-
-# 5. Push to remote repository
-git push origin main`
+# === 3. PULL DASHBOARD COMPONENT (FROM BACKEND TEAMMATE) ===
+git pull origin main`
   },
   {
     id: 'frontend-commands-all',
     title: 'Frontend: 5. All Terminal Commands',
-    description: 'Complete frontend command flow: create Next.js, dev server, and Git push',
+    description: 'Complete frontend command flow: Next.js dev server and Git sync',
     language: 'bash',
     category: 'frontend',
     practiceType: 'commands',
@@ -743,13 +769,12 @@ npx create-next-app@latest frontend --typescript --tailwind --eslint=false --app
 cd frontend
 npm run dev
 
-# === 2. GIT WORKFLOW (RUN FROM PROJECT ROOT) ===
+# === 2. PUSH FRONTEND & PULL DASHBOARD (FROM ROOT) ===
 cd ..
-git pull origin main
-git status
 git add frontend/
-git commit -m "feat(frontend): complete evaluation UI and dashboard"
-git push origin main`
+git commit -m "feat(frontend): complete evaluation UI"
+git push origin main
+git pull origin main`
   },
 
   // ==========================================
