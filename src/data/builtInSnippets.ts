@@ -21,8 +21,7 @@ mariadb -u root < database.sql
 mkdir backend
 cd backend
 npm init -y
-npm install express cors mysql2 jsonwebtoken multer
-mkdir uploads
+npm install express cors mysql2 jsonwebtoken
 
 # 4. Start backend server
 node server.js`
@@ -45,19 +44,18 @@ CREATE TABLE users (
   role VARCHAR(20) NOT NULL,
   emp_score INT DEFAULT NULL,
   boss_score INT DEFAULT NULL,
-  dir_score INT DEFAULT NULL,
-  file_url VARCHAR(255) DEFAULT NULL
+  dir_score INT DEFAULT NULL
 );
 INSERT INTO users (username, password, name, role) VALUES
-('emp1', '1234', 'สมชาย ใจดี', 'employee'),
-('emp2', '1234', 'สมหญิง สดใส', 'employee'),
-('boss', '1234', 'หัวหน้าสมศักดิ์', 'boss'),
-('dir', '1234', 'ผอ.เกรียงไกร', 'director');`
+('emp1', '1234', 'Employee 1', 'employee'),
+('emp2', '1234', 'Employee 2', 'employee'),
+('boss', '1234', 'Boss', 'boss'),
+('dir', '1234', 'Director', 'director');`
   },
   {
     id: 'backend-code-server-js',
     title: 'Backend: 3. Write server.js',
-    description: 'Complete backend server: Express, JWT auth, Multer upload, CRUD & Excel import/export',
+    description: 'Complete backend server: Express, JWT auth, CRUD & Excel import/export',
     language: 'javascript',
     category: 'backend',
     practiceType: 'code',
@@ -65,17 +63,12 @@ INSERT INTO users (username, password, name, role) VALUES
 const cors = require('cors');
 const mysql = require('mysql2/promise');
 const jwt = require('jsonwebtoken');
-const multer = require('multer');
-const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-const uploadDir = path.join(__dirname, 'uploads');
-app.use('/uploads', express.static(uploadDir));
 
 const SECRET = 'jwt_secret';
-const upload = multer({ dest: uploadDir });
 const db = mysql.createPool({ host: 'localhost', user: 'root', password: '', database: 'eval_db' });
 
 const send = (res, status, message, data = null) => res.status(status).json({ status, message, data });
@@ -85,111 +78,105 @@ const auth = (req, res, next) => {
     req.user = jwt.verify(req.headers.authorization?.split(' ')[1], SECRET);
     next();
   } catch {
-    send(res, 401, 'กรุณาเข้าสู่ระบบก่อนดำเนินการ');
+    send(res, 401, 'Unauthorized');
   }
 };
 
-// 1. Login ออก JWT (POST /api/login | Body: {"username":"emp1","password":"1234"})
-// 200 OK: { status: 200, message: "เข้าสู่ระบบสำเร็จ", data: { token: "...", user: {...} } }
+// 1. Login (POST /api/login | Body: {"username":"emp1","password":"1234"})
+// 200 OK: { status: 200, message: "Login successful", data: { token: "...", user: {...} } }
 app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body || {};
     const [rows] = await db.query('SELECT * FROM users WHERE username = ? AND password = ?', [username, password]);
-    if (!rows.length) return send(res, 401, 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+    if (!rows.length) return send(res, 401, 'Invalid username or password');
     const token = jwt.sign({ id: rows[0].id, name: rows[0].name, role: rows[0].role }, SECRET, { expiresIn: '1d' });
-    send(res, 200, 'เข้าสู่ระบบสำเร็จ', { token, user: rows[0] });
+    send(res, 200, 'Login successful', { token, user: rows[0] });
   } catch {
-    send(res, 500, 'เชื่อมต่อฐานข้อมูลล้มเหลว');
+    send(res, 500, 'Database error');
   }
 });
 
-// 2. อัปโหลดไฟล์ (POST /api/upload | Form-Data: file=<เลือกไฟล์> | Header: Authorization Bearer <TOKEN>)
-// 200 OK: { status: 200, message: "อัปโหลดสำเร็จ", data: { url: "filename.png" } }
-app.post('/api/upload', auth, upload.single('file'), (req, res) => {
-  req.file ? send(res, 200, 'อัปโหลดสำเร็จ', { url: req.file.filename }) : send(res, 400, 'ไม่พบไฟล์');
-});
-
-// 3. Dashboard ค้นหา + แบ่งหน้า (GET /api/dashboard?search=&page=1 | Header: Authorization Bearer <TOKEN>)
-// 200 OK: { status: 200, message: "สำเร็จ", data: { items: [...], totalPages: 2 } }
+// 2. Dashboard (GET /api/dashboard?search=&page=1 | Header: Authorization Bearer <TOKEN>)
+// 200 OK: { status: 200, message: "Success", data: { items: [...], totalPages: 2 } }
 app.get('/api/dashboard', auth, async (req, res) => {
   try {
     const { search = '', page = 1 } = req.query;
     const limit = 3, offset = (Math.max(1, Number(page)) - 1) * limit;
     const [items] = await db.query(\`
-      SELECT id, name, emp_score, boss_score, dir_score, file_url,
+      SELECT id, name, emp_score, boss_score, dir_score,
         ROUND((COALESCE(emp_score,0)+COALESCE(boss_score,0)+COALESCE(dir_score,0))/3, 2) AS avg_score
       FROM users WHERE role = 'employee' AND name LIKE ? LIMIT ? OFFSET ?
     \`, [\`%\${search}%\`, limit, offset]);
     const [[{ total }]] = await db.query('SELECT COUNT(*) AS total FROM users WHERE role = "employee" AND name LIKE ?', [\`%\${search}%\`]);
-    send(res, 200, 'สำเร็จ', { items, totalPages: Math.ceil(total / limit) || 1 });
+    send(res, 200, 'Success', { items, totalPages: Math.ceil(total / limit) || 1 });
   } catch {
-    send(res, 500, 'ดึงข้อมูลไม่สำเร็จ');
+    send(res, 500, 'Failed to fetch data');
   }
 });
 
-// 4. รายการรอประเมิน (GET /api/pending/boss หรือ /api/pending/director | Header: Authorization Bearer <TOKEN>)
-// 200 OK: { status: 200, message: "สำเร็จ", data: [ { id: 2, name: "...", emp_score: 80, file_url: null } ] }
+// 3. Pending Evaluations (GET /api/pending/boss or /api/pending/director | Header: Authorization Bearer <TOKEN>)
+// 200 OK: { status: 200, message: "Success", data: [ { id: 2, name: "...", emp_score: 80 } ] }
 app.get('/api/pending/:role', auth, async (req, res) => {
   try {
     const sql = req.params.role === 'boss'
-      ? 'SELECT id, name, emp_score, file_url FROM users WHERE role="employee" AND emp_score IS NOT NULL AND boss_score IS NULL'
-      : 'SELECT id, name, emp_score, boss_score, file_url FROM users WHERE role="employee" AND boss_score IS NOT NULL AND dir_score IS NULL';
+      ? 'SELECT id, name, emp_score FROM users WHERE role="employee" AND emp_score IS NOT NULL AND boss_score IS NULL'
+      : 'SELECT id, name, emp_score, boss_score FROM users WHERE role="employee" AND boss_score IS NOT NULL AND dir_score IS NULL';
     const [rows] = await db.query(sql);
-    send(res, 200, 'สำเร็จ', rows);
+    send(res, 200, 'Success', rows);
   } catch {
-    send(res, 500, 'เกิดข้อผิดพลาด');
+    send(res, 500, 'Error');
   }
 });
 
-// 5. บันทึกผลคะแนน (POST /api/evaluate | Body: {"id":1,"role":"employee","score":85,"file_url":"..."} | Header: Authorization Bearer <TOKEN>)
-// 200 OK: { status: 200, message: "บันทึกคะแนนเรียบร้อย", data: null }
+// 4. Save Score (POST /api/evaluate | Body: {"id":1,"role":"employee","score":85} | Header: Authorization Bearer <TOKEN>)
+// 200 OK: { status: 200, message: "Evaluation saved", data: null }
 app.post('/api/evaluate', auth, async (req, res) => {
   try {
-    const { id, role, score, file_url } = req.body || {};
+    const { id, role, score } = req.body || {};
     const col = role === 'employee' ? 'emp_score' : role === 'boss' ? 'boss_score' : 'dir_score';
-    await db.query(\`UPDATE users SET \${col} = ?, file_url = COALESCE(?, file_url) WHERE id = ?\`, [score, file_url || null, id]);
-    send(res, 200, 'บันทึกคะแนนเรียบร้อย');
+    await db.query(\`UPDATE users SET \${col} = ? WHERE id = ?\`, [score, id]);
+    send(res, 200, 'Evaluation saved');
   } catch {
-    send(res, 500, 'บันทึกไม่สำเร็จ');
+    send(res, 500, 'Failed to save');
   }
 });
 
-// 6. แก้ไขข้อมูลและไฟล์แนบ (PUT /api/evaluate/1 | Body: {"score":90,"file_url":"..."} | Header: Authorization Bearer <TOKEN>)
-// 200 OK: { status: 200, message: "แก้ไขข้อมูลเรียบร้อย", data: null }
+// 5. Update Score (PUT /api/evaluate/1 | Body: {"score":90} | Header: Authorization Bearer <TOKEN>)
+// 200 OK: { status: 200, message: "Evaluation updated", data: null }
 app.put('/api/evaluate/:id', auth, async (req, res) => {
   try {
-    const { score, file_url } = req.body || {};
-    await db.query('UPDATE users SET emp_score = ?, file_url = COALESCE(?, file_url) WHERE id = ?', [score, file_url || null, req.params.id]);
-    send(res, 200, 'แก้ไขข้อมูลเรียบร้อย');
+    const { score } = req.body || {};
+    await db.query('UPDATE users SET emp_score = ? WHERE id = ?', [score, req.params.id]);
+    send(res, 200, 'Evaluation updated');
   } catch {
-    send(res, 500, 'แก้ไขไม่สำเร็จ');
+    send(res, 500, 'Failed to update');
   }
 });
 
-// 7. ลบข้อมูลคะแนน (DELETE /api/evaluate/1 | Header: Authorization Bearer <TOKEN>)
-// 200 OK: { status: 200, message: "ลบข้อมูลเรียบร้อย", data: null }
+// 6. Delete Score (DELETE /api/evaluate/1 | Header: Authorization Bearer <TOKEN>)
+// 200 OK: { status: 200, message: "Evaluation deleted", data: null }
 app.delete('/api/evaluate/:id', auth, async (req, res) => {
   try {
-    await db.query('UPDATE users SET emp_score = NULL, boss_score = NULL, dir_score = NULL, file_url = NULL WHERE id = ?', [req.params.id]);
-    send(res, 200, 'ลบข้อมูลเรียบร้อย');
+    await db.query('UPDATE users SET emp_score = NULL, boss_score = NULL, dir_score = NULL WHERE id = ?', [req.params.id]);
+    send(res, 200, 'Evaluation deleted');
   } catch {
-    send(res, 500, 'ลบไม่สำเร็จ');
+    send(res, 500, 'Failed to delete');
   }
 });
 
-// 8. Export CSV (GET /api/export | Header: Authorization Bearer <TOKEN>)
-// 200 OK: { status: 200, message: "สำเร็จ", data: [ { id: 1, name: "...", emp_score: 89, avg_score: 96.33 } ] }
+// 7. Export CSV (GET /api/export | Header: Authorization Bearer <TOKEN>)
+// 200 OK: { status: 200, message: "Success", data: [ { id: 1, name: "...", emp_score: 89, avg_score: 96.33 } ] }
 app.get('/api/export', auth, async (req, res) => {
   const [rows] = await db.query(\`
     SELECT id, name, emp_score, boss_score, dir_score,
       ROUND((COALESCE(emp_score,0)+COALESCE(boss_score,0)+COALESCE(dir_score,0))/3, 2) AS avg_score
     FROM users WHERE role = 'employee' ORDER BY id ASC
   \`);
-  send(res, 200, 'สำเร็จ', rows);
+  send(res, 200, 'Success', rows);
 });
 
-// 9. Import CSV (POST /api/import | Body: {"csv":"id,name,emp,boss,dir\\n1,สมชาย,90,90,90"} | Header: Authorization Bearer <TOKEN>)
-// 200 OK: { status: 200, message: "นำเข้าสำเร็จ", data: null }
+// 8. Import CSV (POST /api/import | Body: {"csv":"id,name,emp,boss,dir\\n1,Employee 1,90,90,90"} | Header: Authorization Bearer <TOKEN>)
+// 200 OK: { status: 200, message: "Import successful", data: null }
 app.post('/api/import', auth, async (req, res) => {
   try {
     const lines = (req.body.csv || '').trim().split('\\n').slice(1);
@@ -199,9 +186,9 @@ app.post('/api/import', auth, async (req, res) => {
         await db.query('UPDATE users SET name=COALESCE(NULLIF(?,""), name), emp_score=NULLIF(?,""), boss_score=NULLIF(?,""), dir_score=NULLIF(?,"") WHERE id = ?', [name, emp, boss, dir, id]);
       }
     }
-    send(res, 200, 'นำเข้าสำเร็จ');
+    send(res, 200, 'Import successful');
   } catch {
-    send(res, 500, 'นำเข้าไม่สำเร็จ');
+    send(res, 500, 'Failed to import');
   }
 });
 
@@ -209,13 +196,13 @@ app.listen(5000, () => console.log('Server running on port 5000'));`
   },
   {
     id: 'backend-postman-practice',
-    title: 'Backend: 4. Postman API Testing',
+    title: 'Backend: 4. Postman API Testing (8 Routes)',
     description: 'Postman methods, URLs, headers, request bodies, and expected 200 OK responses',
     language: 'javascript',
     category: 'backend',
     practiceType: 'code',
     code: `// ==========================================
-// --- POSTMAN API TESTING (9 ROUTES) ---
+// --- POSTMAN API TESTING (8 ROUTES) ---
 // ==========================================
 
 // --- 1. Login (POST /api/login) ---
@@ -227,77 +214,67 @@ URL: http://localhost:5000/api/login
   "password": "1234"
 }
 // Expected Result (200 OK):
-// { "status": 200, "message": "เข้าสู่ระบบสำเร็จ", "data": { "token": "...", "user": { "id": 1, "name": "สมชาย ใจดี", "role": "employee" } } }
+// { "status": 200, "message": "Login successful", "data": { "token": "...", "user": { "id": 1, "name": "Employee 1", "role": "employee" } } }
 
-// --- 2. Upload File (POST /api/upload) ---
-Method: POST
-URL: http://localhost:5000/api/upload
-// Header: Authorization: Bearer <TOKEN>
-// Body (form-data): key = file (File)
-// Expected Result (200 OK):
-// { "status": 200, "message": "อัปโหลดสำเร็จ", "data": { "url": "abc123xyz.png" } }
-
-// --- 3. Dashboard (GET /api/dashboard) ---
+// --- 2. Dashboard (GET /api/dashboard) ---
 Method: GET
 URL: http://localhost:5000/api/dashboard?search=&page=1
 // Header: Authorization: Bearer <TOKEN>
 // Expected Result (200 OK):
-// { "status": 200, "message": "สำเร็จ", "data": { "items": [{ "id": 1, "name": "สมชาย ใจดี", "emp_score": 89, "boss_score": 100, "dir_score": 100, "avg_score": 96.33 }], "totalPages": 2 } }
+// { "status": 200, "message": "Success", "data": { "items": [{ "id": 1, "name": "Employee 1", "emp_score": 89, "boss_score": 100, "dir_score": 100, "avg_score": 96.33 }], "totalPages": 2 } }
 
-// --- 4. Pending Evaluations (GET /api/pending/:role) ---
+// --- 3. Pending Evaluations (GET /api/pending/:role) ---
 Method: GET
 URL: http://localhost:5000/api/pending/boss
 // Header: Authorization: Bearer <TOKEN>
 // Expected Result (200 OK):
-// { "status": 200, "message": "สำเร็จ", "data": [{ "id": 2, "name": "สมหญิง สดใส", "emp_score": 80, "file_url": null }] }
+// { "status": 200, "message": "Success", "data": [{ "id": 2, "name": "Employee 2", "emp_score": 80 }] }
 
-// --- 5. Save Score (POST /api/evaluate) ---
+// --- 4. Save Score (POST /api/evaluate) ---
 Method: POST
 URL: http://localhost:5000/api/evaluate
 // Headers: Authorization: Bearer <TOKEN> | Content-Type: application/json
 {
   "id": 1,
   "role": "employee",
-  "score": 85,
-  "file_url": "abc123xyz.png"
+  "score": 85
 }
 // Expected Result (200 OK):
-// { "status": 200, "message": "บันทึกคะแนนเรียบร้อย", "data": null }
+// { "status": 200, "message": "Evaluation saved", "data": null }
 
-// --- 6. Edit Score (PUT /api/evaluate/:id) ---
+// --- 5. Edit Score (PUT /api/evaluate/:id) ---
 Method: PUT
 URL: http://localhost:5000/api/evaluate/1
 // Headers: Authorization: Bearer <TOKEN> | Content-Type: application/json
 {
-  "score": 90,
-  "file_url": "updated.png"
+  "score": 90
 }
 // Expected Result (200 OK):
-// { "status": 200, "message": "แก้ไขข้อมูลเรียบร้อย", "data": null }
+// { "status": 200, "message": "Evaluation updated", "data": null }
 
-// --- 7. Delete Score (DELETE /api/evaluate/:id) ---
+// --- 6. Delete Score (DELETE /api/evaluate/:id) ---
 Method: DELETE
 URL: http://localhost:5000/api/evaluate/1
 // Header: Authorization: Bearer <TOKEN>
 // Expected Result (200 OK):
-// { "status": 200, "message": "ลบข้อมูลเรียบร้อย", "data": null }
+// { "status": 200, "message": "Evaluation deleted", "data": null }
 
-// --- 8. Export CSV (GET /api/export) ---
+// --- 7. Export CSV (GET /api/export) ---
 Method: GET
 URL: http://localhost:5000/api/export
 // Header: Authorization: Bearer <TOKEN>
 // Expected Result (200 OK):
-// { "status": 200, "message": "สำเร็จ", "data": [{ "id": 1, "name": "สมชาย ใจดี", "emp_score": 89, "boss_score": 100, "dir_score": 100, "avg_score": 96.33 }] }
+// { "status": 200, "message": "Success", "data": [{ "id": 1, "name": "Employee 1", "emp_score": 89, "boss_score": 100, "dir_score": 100, "avg_score": 96.33 }] }
 
-// --- 9. Import CSV (POST /api/import) ---
+// --- 8. Import CSV (POST /api/import) ---
 Method: POST
 URL: http://localhost:5000/api/import
 // Headers: Authorization: Bearer <TOKEN> | Content-Type: application/json
 {
-  "csv": "id,name,emp_score,boss_score,dir_score\\n1,สมชาย ใจดี,95,95,95"
+  "csv": "id,name,emp_score,boss_score,dir_score\\n1,Employee 1,95,95,95"
 }
 // Expected Result (200 OK):
-// { "status": 200, "message": "นำเข้าสำเร็จ", "data": null }`
+// { "status": 200, "message": "Import successful", "data": null }`
   },
   {
     id: 'backend-code-dashboard-tsx',
@@ -308,15 +285,13 @@ URL: http://localhost:5000/api/import
     practiceType: 'code',
     code: `'use client';
 
-const UPLOAD_URL = 'http://localhost:5000/uploads';
-
 export default function Dashboard({ user, list, page, setPage, totalPages, search, setSearch, load, req }: any) {
-  // 1. ป้ายสถานะ
+  // 1. Status Badges
   const getBadge = (e: any) => {
-    if (e.dir_score !== null) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">เสร็จสมบูรณ์</span>;
-    if (e.boss_score !== null) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">รอ ผอ.</span>;
-    if (e.emp_score !== null) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">รอหัวหน้า</span>;
-    return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">รอพนักงาน</span>;
+    if (e.dir_score !== null) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Completed</span>;
+    if (e.boss_score !== null) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">Pending Director</span>;
+    if (e.emp_score !== null) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">Pending Boss</span>;
+    return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">Pending Self</span>;
   };
 
   // 2. Export CSV
@@ -338,7 +313,7 @@ export default function Dashboard({ user, list, page, setPage, totalPages, searc
     if (!file) return;
     try {
       await req('/import', 'POST', { csv: await file.text() });
-      alert('นำเข้าสำเร็จ');
+      alert('Import successful');
       e.target.value = '';
       load();
     } catch (err: any) { alert(err.message); }
@@ -346,12 +321,12 @@ export default function Dashboard({ user, list, page, setPage, totalPages, searc
 
   return (
     <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-      {/* แถบสรุปสถิติ & เมนูจัดการ */}
+      {/* Summary stats & actions */}
       <div className="p-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-slate-50">
         <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
           <div>
-            <h2 className="text-base font-bold text-slate-900">กระดานสรุปผลการประเมิน (Dashboard)</h2>
-            <p className="text-xs text-slate-500 mt-0.5">สูตรคำนวณค่าเฉลี่ย: (ตนเอง + หัวหน้า + ผอ.) / 3</p>
+            <h2 className="text-base font-bold text-slate-900">Evaluation Dashboard</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Average formula: (Self + Boss + Director) / 3</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {user.role !== 'employee' && (
@@ -365,41 +340,38 @@ export default function Dashboard({ user, list, page, setPage, totalPages, searc
                 </label>
               </div>
             )}
-            <input type="text" placeholder="ค้นหาชื่อพนักงาน..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="border border-slate-300 px-3 py-1.5 rounded-lg text-xs w-44 bg-white" />
+            <input type="text" placeholder="Search employee..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="border border-slate-300 px-3 py-1.5 rounded-lg text-xs w-44 bg-white" />
           </div>
         </div>
 
-        {/* สถิติ 3 ช่อง */}
+        {/* 3 Stat Cards */}
         <div className="grid grid-cols-3 gap-3 pt-2 text-center text-xs">
-          <div className="bg-white p-2.5 rounded-lg border border-slate-200"><span className="text-slate-500">รอหัวหน้า</span> <strong className="text-sm text-amber-600 ml-1">{list.filter((x: any) => x.emp_score && !x.boss_score).length}</strong></div>
-          <div className="bg-white p-2.5 rounded-lg border border-slate-200"><span className="text-slate-500">รอ ผอ.</span> <strong className="text-sm text-blue-600 ml-1">{list.filter((x: any) => x.boss_score && !x.dir_score).length}</strong></div>
-          <div className="bg-white p-2.5 rounded-lg border border-slate-200"><span className="text-slate-500">เสร็จสมบูรณ์</span> <strong className="text-sm text-emerald-600 ml-1">{list.filter((x: any) => x.dir_score).length}</strong></div>
+          <div className="bg-white p-2.5 rounded-lg border border-slate-200"><span className="text-slate-500">Pending Boss</span> <strong className="text-sm text-amber-600 ml-1">{list.filter((x: any) => x.emp_score && !x.boss_score).length}</strong></div>
+          <div className="bg-white p-2.5 rounded-lg border border-slate-200"><span className="text-slate-500">Pending Dir</span> <strong className="text-sm text-blue-600 ml-1">{list.filter((x: any) => x.boss_score && !x.dir_score).length}</strong></div>
+          <div className="bg-white p-2.5 rounded-lg border border-slate-200"><span className="text-slate-500">Completed</span> <strong className="text-sm text-emerald-600 ml-1">{list.filter((x: any) => x.dir_score).length}</strong></div>
         </div>
       </div>
 
-      {/* ตัวตารางข้อมูล */}
+      {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-100/75 border-b border-slate-200 text-xs font-semibold text-slate-700 uppercase tracking-wider">
             <tr>
-              <th className="py-3 px-4">ชื่อพนักงาน</th>
-              <th className="py-3 px-4 text-center">ตนเอง</th>
-              <th className="py-3 px-4 text-center">หัวหน้า</th>
-              <th className="py-3 px-4 text-center">ผอ.</th>
-              <th className="py-3 px-4 text-center font-bold text-slate-900">คะแนนเฉลี่ย</th>
-              <th className="py-3 px-4 text-center">สถานะ</th>
+              <th className="py-3 px-4">Employee Name</th>
+              <th className="py-3 px-4 text-center">Self</th>
+              <th className="py-3 px-4 text-center">Boss</th>
+              <th className="py-3 px-4 text-center">Director</th>
+              <th className="py-3 px-4 text-center font-bold text-slate-900">Average</th>
+              <th className="py-3 px-4 text-center">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {list.length === 0 ? (
-              <tr><td colSpan={6} className="py-8 text-center text-slate-400 text-sm">ไม่พบข้อมูลพนักงาน</td></tr>
+              <tr><td colSpan={6} className="py-8 text-center text-slate-400 text-sm">No employee records found</td></tr>
             ) : (
               list.map((emp: any) => (
                 <tr key={emp.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3.5 px-4 font-medium text-slate-800">
-                    {emp.name}
-                    {emp.file_url && <a href={\`\${UPLOAD_URL}/\${emp.file_url}\`} target="_blank" className="ml-2 text-xs text-blue-600 underline font-normal">ไฟล์</a>}
-                  </td>
+                  <td className="py-3.5 px-4 font-medium text-slate-800">{emp.name}</td>
                   <td className="py-3.5 px-4 text-center text-slate-600">{emp.emp_score ?? '-'}</td>
                   <td className="py-3.5 px-4 text-center text-slate-600">{emp.boss_score ?? '-'}</td>
                   <td className="py-3.5 px-4 text-center text-slate-600">{emp.dir_score ?? '-'}</td>
@@ -414,15 +386,15 @@ export default function Dashboard({ user, list, page, setPage, totalPages, searc
         </table>
       </div>
 
-      {/* ส่วนแบ่งหน้า (Pagination) */}
+      {/* Pagination */}
       <div className="flex justify-between items-center px-5 py-3 border-t border-slate-200 bg-slate-50/50 text-xs text-slate-500">
-        <span>แสดงหน้า {page} จากทั้งหมด {totalPages} หน้า</span>
+        <span>Page {page} of {totalPages}</span>
         <div className="flex gap-2">
           <button disabled={page <= 1} onClick={() => setPage((p: number) => p - 1)} className="px-3 py-1.5 border border-slate-300 rounded-lg disabled:opacity-40 hover:bg-white transition bg-white text-slate-700 font-medium">
-            &larr; ก่อนหน้า
+            &larr; Prev
           </button>
           <button disabled={page >= totalPages} onClick={() => setPage((p: number) => p + 1)} className="px-3 py-1.5 border border-slate-300 rounded-lg disabled:opacity-40 hover:bg-white transition bg-white text-slate-700 font-medium">
-            ถัดไป &rarr;
+            Next &rarr;
           </button>
         </div>
       </div>
@@ -440,7 +412,6 @@ export default function Dashboard({ user, list, page, setPage, totalPages, searc
     practiceType: 'git',
     code: `# === 1. INITIAL PUSH (BACKEND & DATABASE) ===
 echo node_modules > .gitignore
-echo uploads >> .gitignore
 git init
 git add .
 git commit -m "feat(backend): complete api and database"
@@ -467,14 +438,12 @@ mariadb -u root < database.sql
 mkdir backend
 cd backend
 npm init -y
-npm install express cors mysql2 jsonwebtoken multer
-mkdir uploads
+npm install express cors mysql2 jsonwebtoken
 node server.js
 
 # === 2. INITIAL GIT PUSH (RUN FROM PROJECT ROOT) ===
 cd ..
 echo node_modules > .gitignore
-echo uploads >> .gitignore
 git init
 git add .
 git commit -m "feat(backend): complete api and database"
@@ -526,7 +495,7 @@ export default nextConfig;`
   {
     id: 'frontend-code-page-tsx',
     title: 'Frontend: 3. Write app/page.tsx (Frontend)',
-    description: 'Login, employee form & upload, boss/director grading, and Dashboard integration',
+    description: 'Login, employee self-eval, boss/director grading, and Dashboard integration',
     language: 'typescript',
     category: 'frontend',
     practiceType: 'code',
@@ -536,8 +505,7 @@ import { useState, useEffect } from 'react';
 import Dashboard from './Dashboard';
 
 const API = 'http://localhost:5000/api';
-const UPLOAD_URL = 'http://localhost:5000/uploads';
-const roleNames: Record<string, string> = { employee: 'พนักงาน', boss: 'หัวหน้างาน', director: 'ผู้อำนวยการ' };
+const roleNames: Record<string, string> = { employee: 'Employee', boss: 'Boss', director: 'Director' };
 
 const req = async (url: string, method = 'GET', body?: any) => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -550,7 +518,7 @@ const req = async (url: string, method = 'GET', body?: any) => {
     body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
   });
   const json = await res.json();
-  if (!res.ok) throw new Error(json.message || 'เกิดข้อผิดพลาด');
+  if (!res.ok) throw new Error(json.message || 'Error occurred');
   return json.data;
 };
 
@@ -575,19 +543,12 @@ export default function Home() {
       setPending(pend);
       if (u.role === 'employee') {
         const me = d.items.find((x: any) => x.id === u.id);
-        if (me) setUser((prev: any) => ({ ...prev, emp_score: me.emp_score, file_url: me.file_url }));
+        if (me) setUser((prev: any) => ({ ...prev, emp_score: me.emp_score }));
       }
     } catch (err: any) { alert(err.message); }
   };
 
   useEffect(() => { if (user) load(user, page, search); }, [user?.id, page, search]);
-
-  const upload = async (file?: File) => {
-    if (!file) return null;
-    const fd = new FormData();
-    fd.append('file', file);
-    return (await req('/upload', 'POST', fd)).url;
-  };
 
   const login = async (e: any) => {
     e.preventDefault();
@@ -602,15 +563,14 @@ export default function Home() {
   const save = async (e: any) => {
     e.preventDefault();
     try {
-      const file_url = await upload(e.target.file?.files?.[0]);
       const score = e.target.score.value;
       if (isEditing) {
-        await req(\`/evaluate/\${user.id}\`, 'PUT', { score, file_url });
+        await req(\`/evaluate/\${user.id}\`, 'PUT', { score });
         setIsEditing(false);
       } else {
-        await req('/evaluate', 'POST', { id: user.id, role: 'employee', score, file_url });
+        await req('/evaluate', 'POST', { id: user.id, role: 'employee', score });
       }
-      alert('บันทึกเรียบร้อย');
+      alert('Saved successfully');
       load();
     } catch (err: any) { alert(err.message); }
   };
@@ -618,16 +578,16 @@ export default function Home() {
   const evaluateOther = async (id: number, score: string) => {
     try {
       await req('/evaluate', 'POST', { id, role: user.role, score });
-      alert('บันทึกคะแนนเรียบร้อย');
+      alert('Saved successfully');
       load();
     } catch (err: any) { alert(err.message); }
   };
 
   const del = async () => {
-    if (!confirm('ยืนยันที่จะลบข้อมูลการประเมินนี้หรือไม่?')) return;
+    if (!confirm('Are you sure you want to delete this evaluation?')) return;
     try {
       await req(\`/evaluate/\${user.id}\`, 'DELETE');
-      alert('ลบข้อมูลเรียบร้อย');
+      alert('Deleted successfully');
       load();
     } catch (err: any) { alert(err.message); }
   };
@@ -637,12 +597,12 @@ export default function Home() {
       <main className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
         <form onSubmit={login} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-sm space-y-4">
           <div className="text-center mb-2">
-            <h1 className="text-xl font-bold text-slate-800">ระบบประเมินผลการปฏิบัติงาน</h1>
+            <h1 className="text-xl font-bold text-slate-800">Performance Evaluation System</h1>
           </div>
-          <input name="u" placeholder="ชื่อผู้ใช้งาน (emp1-4, boss, dir)" className="border border-slate-300 w-full p-2.5 rounded-lg text-sm" required />
-          <input name="p" type="password" placeholder="รหัสผ่าน (1234)" className="border border-slate-300 w-full p-2.5 rounded-lg text-sm" required />
+          <input name="u" placeholder="Username (emp1-4, boss, dir)" className="border border-slate-300 w-full p-2.5 rounded-lg text-sm" required />
+          <input name="p" type="password" placeholder="Password (1234)" className="border border-slate-300 w-full p-2.5 rounded-lg text-sm" required />
           <button className="bg-blue-600 hover:bg-blue-700 text-white w-full py-2.5 rounded-lg text-sm font-medium transition shadow-sm">
-            เข้าสู่ระบบ
+            Sign In
           </button>
         </form>
       </main>
@@ -653,49 +613,43 @@ export default function Home() {
     <div className="min-h-screen bg-slate-50/60 p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
       <header className="flex justify-between items-center bg-white px-5 py-3.5 rounded-xl shadow-sm border border-slate-200">
         <div className="flex items-center gap-2">
-          <span className="text-slate-500 text-sm">ผู้ใช้งาน:</span>
+          <span className="text-slate-500 text-sm">User:</span>
           <strong className="text-slate-800 text-sm">{user.name}</strong>
           <span className="px-2.5 py-0.5 bg-blue-50 border border-blue-200 text-blue-700 rounded-full text-xs font-semibold">
             {roleNames[user.role]}
           </span>
         </div>
         <button onClick={() => { localStorage.removeItem('token'); setUser(null); }} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition">
-          ออกจากระบบ
+          Logout
         </button>
       </header>
 
       {user.role === 'employee' && (
         <section className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-          <h2 className="text-base font-bold text-slate-800 mb-3 pb-2 border-b">แบบประเมินตนเอง (คะแนนเต็ม 100)</h2>
+          <h2 className="text-base font-bold text-slate-800 mb-3 pb-2 border-b">Self Evaluation (Max 100)</h2>
           {user.emp_score !== null && !isEditing ? (
             <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-emerald-50/60 border border-emerald-200 rounded-lg">
               <div>
-                <span className="text-emerald-800 font-semibold text-sm">คะแนนประเมินตนเอง: {user.emp_score} / 100</span>
-                {user.file_url && (
-                  <a href={\`\${UPLOAD_URL}/\${user.file_url}\`} target="_blank" className="ml-3 text-blue-600 underline text-xs">
-                    ดูไฟล์หลักฐาน
-                  </a>
-                )}
+                <span className="text-emerald-800 font-semibold text-sm">Self Score: {user.emp_score} / 100</span>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setIsEditing(true)} className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-medium transition">
-                  แก้ไขคะแนน/ไฟล์
+                  Edit Score
                 </button>
                 <button onClick={del} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition">
-                  ลบข้อมูล
+                  Delete
                 </button>
               </div>
             </div>
           ) : (
             <form onSubmit={save} className="flex flex-wrap items-center gap-3">
-              <input name="score" type="number" min="0" max="100" placeholder="คะแนน 0-100" defaultValue={user.emp_score || ''} className="border border-slate-300 px-3 py-1.5 rounded-lg w-28 text-center text-sm" required />
-              <input name="file" type="file" className="text-xs file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700 file:cursor-pointer" />
+              <input name="score" type="number" min="0" max="100" placeholder="Score 0-100" defaultValue={user.emp_score || ''} className="border border-slate-300 px-3 py-1.5 rounded-lg w-28 text-center text-sm" required />
               <button className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-medium transition shadow-sm">
-                {isEditing ? 'บันทึกการแก้ไข' : 'บันทึกคะแนน'}
+                {isEditing ? 'Update' : 'Submit'}
               </button>
               {isEditing && (
                 <button type="button" onClick={() => setIsEditing(false)} className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-medium">
-                  ยกเลิก
+                  Cancel
                 </button>
               )}
             </form>
@@ -705,10 +659,10 @@ export default function Home() {
 
       {user.role !== 'employee' && (
         <section className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-          <h2 className="text-base font-bold text-slate-800 mb-3 pb-2 border-b">รายการรอการประเมิน ({roleNames[user.role]})</h2>
+          <h2 className="text-base font-bold text-slate-800 mb-3 pb-2 border-b">Pending Evaluations ({roleNames[user.role]})</h2>
           {pending.length === 0 ? (
             <p className="text-slate-400 text-center py-4 text-sm bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
-              ไม่มีรายชื่อพนักงานที่รอการประเมินในขณะนี้
+              No pending evaluations at this time
             </p>
           ) : (
             <div className="space-y-2.5">
@@ -716,13 +670,12 @@ export default function Home() {
                 <form key={p.id} onSubmit={(e: any) => { e.preventDefault(); evaluateOther(p.id, e.target.score.value); }} className="flex flex-wrap items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 gap-3 text-sm">
                   <div>
                     <span className="font-semibold text-slate-800">{p.name}</span>
-                    <span className="text-slate-500 text-xs ml-2">(ตนเอง: {p.emp_score}{p.boss_score !== undefined ? \`, หัวหน้า: \${p.boss_score}\` : ''})</span>
-                    {p.file_url && <a href={\`\${UPLOAD_URL}/\${p.file_url}\`} target="_blank" className="ml-2 text-blue-600 underline text-xs">ไฟล์หลักฐาน</a>}
+                    <span className="text-slate-500 text-xs ml-2">(Self: {p.emp_score}{p.boss_score !== undefined ? \`, Boss: \${p.boss_score}\` : ''})</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <input name="score" type="number" min="0" max="100" placeholder="0 - 100" className="border border-slate-300 px-2.5 py-1 w-24 rounded-lg text-center text-sm" required />
                     <button className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-medium transition shadow-sm">
-                      บันทึกคะแนน
+                      Submit Score
                     </button>
                   </div>
                 </form>
@@ -732,7 +685,7 @@ export default function Home() {
         </section>
       )}
 
-      {/* 3. ตาราง Dashboard สรุปผลคะแนน (Component แยกสำหรับ Fullstack) */}
+      {/* 3. Dashboard Component */}
       <Dashboard user={user} list={list} page={page} setPage={setPage} totalPages={totalPages} search={search} setSearch={setSearch} load={load} req={req} />
     </div>
   );
